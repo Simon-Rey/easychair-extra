@@ -1,12 +1,12 @@
 import warnings
-
-import pandas as pd
+from itertools import chain
 
 import csv
 import os.path
 
 from read import read_committee, read_submission
-from reviewassignment import find_feasible_assignment, committee_to_bid_profile
+from reviewassignment import find_feasible_assignment, committee_to_bid_profile, \
+    find_emergency_reviewers
 
 
 def read_volunteers(committee_df, emergency_pool_volunteers_file_path):
@@ -61,10 +61,64 @@ if __name__ == "__main__":
 
     bid_level_weights = {'yes': 1, 'maybe': 0.5}
     bid_profile = committee_to_bid_profile(volunteers, submissions, bid_level_weights)
-    assignment = find_feasible_assignment(bid_profile, bid_level_weights, None, 1, min_num_reviewers=True)
+    assignment = find_emergency_reviewers(bid_profile, bid_level_weights, 150)
     useful_reviewers = {r: a for r, a in assignment.items() if len(a) > 0}
+    covered_papers = set()
+    for a in assignment.values():
+        covered_papers.update(a)
     print()
-    print(f"Found an assignment using {len(useful_reviewers)} reviewers:")
-    for r, a in useful_reviewers.items():
-        print(f"\t{r}: {a}")
-    print(f"Total number of papers covered: {sum(len(a) for a in useful_reviewers.values())}")
+    print(
+        f"Found an assignment using {len(useful_reviewers)} reviewers and covering "
+        f"{len(covered_papers)} papers:"
+    )
+    with open("emergency_reviewers.csv", "w") as f:
+        f.write("reviewer#;name;email;num_bids\n")
+        for r in useful_reviewers:
+            f.write(
+                f"{r};"
+                f"{committee.loc[committee['#'] == r]['full name'].iloc[0]};"
+                f"{committee.loc[committee['#'] == r]['email'].iloc[0]};"
+                f"{len(bid_profile[r]['yes']) + len(bid_profile[r]['maybe'])}\n"
+            )
+    with open("non_emergency_reviewers.csv", "w") as f:
+        f.write("reviewer#;name;email;num_bids\n")
+        for r in volunteers["#"]:
+            if r not in useful_reviewers:
+                f.write(
+                    f"{r};"
+                    f"{committee.loc[committee['#'] == r]['full name'].iloc[0]};"
+                    f"{committee.loc[committee['#'] == r]['email'].iloc[0]};"
+                    f"{len(bid_profile[r]['yes']) + len(bid_profile[r]['maybe'])}\n"
+                )
+
+    print("\n" + "=" * 43 + "\n   Looking for the smallest review quota\n" + "=" * 43)
+    number_review_per_paper = 3
+    reviewers = committee[committee["role"] == "PC member"]
+    available_reviewers = reviewers[~reviewers["#"].isin(useful_reviewers)]
+    bid_profile = committee_to_bid_profile(available_reviewers, submissions, bid_level_weights)
+    reviewers_assignment = {}
+    num_reviews_needed = len(submissions.index) * number_review_per_paper
+    number_max_review_per_reviewer = 0
+    num_assigned_previous = 0
+    while sum(len(p) for p in reviewers_assignment.values()) < num_reviews_needed:
+        number_max_review_per_reviewer += 1
+        reviewers_assignment = find_feasible_assignment(
+            bid_profile,
+            bid_level_weights,
+            number_max_review_per_reviewer,
+            number_review_per_paper
+        )
+        if reviewers_assignment:
+            num_assigned = sum(len(p) for p in reviewers_assignment.values())
+            print(
+                f"\tFOUND: Assignment with {number_review_per_paper} reviews per paper and a "
+                f"maximum of {number_max_review_per_reviewer} reviews per reviewers: "
+                f"{num_assigned} (+{num_assigned - num_assigned_previous}) reviews in total for "
+                f"{len(submissions.index) * number_review_per_paper} needed (missing "
+                f"{len(submissions.index) * number_review_per_paper - num_assigned}).")
+            if num_assigned == num_assigned_previous:
+                break
+            num_assigned_previous = num_assigned
+        else:
+            print(f"\tProblem solving the ILP...")
+            break

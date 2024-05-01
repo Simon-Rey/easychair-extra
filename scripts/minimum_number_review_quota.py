@@ -62,3 +62,26 @@ if __name__ == "__main__":
         else:
             print(f"\tProblem solving the ILP...")
             break
+
+    print("\n" + "=" * 43 + "\n   Checking the specific case of max 4 papers per reviewer\n" + "=" * 43)
+    reviewers_assignment = find_feasible_assignment(
+        bid_profile,
+        bid_level_weights,
+        4,
+        number_review_per_paper
+    )
+    papers_assignment = {}
+    for r, a in reviewers_assignment.items():
+        for p in a:
+            if p in papers_assignment:
+                papers_assignment[p].append(r)
+            else:
+                papers_assignment[p] = [r]
+
+    not_fulfilled_papers = sorted((p for p, a in papers_assignment.items() if len(a) < number_review_per_paper), key=lambda x: len(papers_assignment[p]))
+    print(
+        f"{len(not_fulfilled_papers)} papers have not been assigned {number_review_per_paper} "
+        f"reviews:"
+    )
+    for p in not_fulfilled_papers:
+        print(f"\t{p} - {submissions.loc[submissions['#'] == p]['title'].iloc[0]} ({len(papers_assignment[p])} reviews)")
