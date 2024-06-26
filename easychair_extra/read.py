@@ -24,7 +24,10 @@ def read_topic(topic_file_path):
     return area_topics, topics_area
 
 
-def read_committee(committee_file_path, committee_topic_file_path=None, topics_to_areas=None,
+def read_committee(committee_file_path,
+                   *,
+                   committee_topic_file_path=None,
+                   topics_to_areas=None,
                    bids_file_path=None):
     df = pd.read_csv(committee_file_path, delimiter=',', encoding="utf-8")
     df["person #"] = pd.to_numeric(df["person #"], downcast="integer")
@@ -85,19 +88,18 @@ def read_committee(committee_file_path, committee_topic_file_path=None, topics_t
 
 def read_submission(
         submission_file_path,
+        *,
         submission_topic_file_path=None,
         author_file_path=None,
+        review_file_path=None,
         submission_field_value_path=None,
-        topics_to_areas=None
+        topics_to_areas=None,
 ):
     df = pd.read_csv(submission_file_path, delimiter=',', encoding="utf-8")
     df.drop(df[df["deleted?"] == "yes"].index, inplace=True)
     df.drop(df[df["decision"] == "desk reject"].index, inplace=True)
 
     if submission_topic_file_path:
-        if not topics_to_areas:
-            raise ValueError("If you set the submission_topic_file_path, then you also need to "
-                             "provide the topics_to_areas mapping.")
         sub_to_topics = {}
         sub_to_areas = {}
         with open(submission_topic_file_path, encoding="utf-8") as f:
@@ -109,13 +111,15 @@ def read_submission(
                     sub_to_topics[sub_id].append(topic)
                 else:
                     sub_to_topics[sub_id] = [topic]
-                area = topics_to_areas[topic]
-                if sub_id in sub_to_areas:
-                    sub_to_areas[sub_id].append(area)
-                else:
-                    sub_to_areas[sub_id] = [area]
+                if topics_to_areas:
+                    area = topics_to_areas[topic]
+                    if sub_id in sub_to_areas:
+                        sub_to_areas[sub_id].append(area)
+                    else:
+                        sub_to_areas[sub_id] = [area]
         df["topics"] = df.apply(lambda df_row: sub_to_topics.get(df_row["#"], []), axis=1)
-        df["areas"] = df.apply(lambda df_row: sub_to_areas.get(df_row["#"], []), axis=1)
+        if topics_to_areas:
+            df["areas"] = df.apply(lambda df_row: sub_to_areas.get(df_row["#"], []), axis=1)
 
     if author_file_path:
         sub_to_authors = {}
@@ -141,4 +145,18 @@ def read_submission(
                     sub_to_is_students[sub_id] = row["value"] == "allstudent"
         df["all_authors_students"] = df.apply(lambda df_row: sub_to_is_students.get(df_row["#"], False),
                                               axis=1)
+
+    if review_file_path:
+        sub_to_total_scores = {}
+        with open(review_file_path, encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                sub_id = int(row["submission #"].strip())
+                total_score = int(row["total score"].strip())
+                if sub_id in sub_to_total_scores:
+                    sub_to_total_scores[sub_id].append(total_score)
+                else:
+                    sub_to_total_scores[sub_id] = [total_score]
+        df["total_scores"] = df.apply(lambda df_row: sub_to_total_scores.get(df_row["#"], []),
+                                      axis=1)
     return df

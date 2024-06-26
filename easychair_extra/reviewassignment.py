@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from mip import xsum, maximize, OptimizationStatus, Model, BINARY, LinExpr
 
 
