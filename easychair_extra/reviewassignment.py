@@ -7,17 +7,17 @@ def committee_to_bid_profile(committee_df, submission_df, bid_levels):
     def apply_func(df_row):
         bids = {}
         for bid in bid_levels:
-            bids[bid] = [p for p in df_row["bids_" + bid] if p in submission_df["#"].values]
+            bids[bid] = [
+                p for p in df_row["bids_" + bid] if p in submission_df["#"].values
+            ]
         bid_profile[df_row["#"]] = bids
+
     committee_df.apply(apply_func, axis=1)
 
     return bid_profile
 
 
-def construct_mip_variables_for_assignment(
-        bid_profile,
-        bid_weights
-):
+def construct_mip_variables_for_assignment(bid_profile, bid_weights):
     m = Model()
     reviewers_vars = {}
     reviewers_used_vars = {}
@@ -38,22 +38,31 @@ def construct_mip_variables_for_assignment(
                         submissions_vars[s] = {r: variable}
     for s in submissions_vars:
         submissions_covered_vars[s] = m.add_var(name=f"z_{s}", var_type=BINARY)
-    return m, reviewers_vars, reviewers_used_vars, submissions_vars, submissions_covered_vars
+    return (
+        m,
+        reviewers_vars,
+        reviewers_used_vars,
+        submissions_vars,
+        submissions_covered_vars,
+    )
 
 
 def find_feasible_assignment(
-        bid_profile: dict,
-        bid_weights: dict,
-        max_num_reviews_asked: int,
-        num_reviews_per_paper: int,
-        min_num_reviewers: bool = False,
-        verbose: bool = False
+    bid_profile: dict,
+    bid_weights: dict,
+    max_num_reviews_asked: int,
+    num_reviews_per_paper: int,
+    min_num_reviewers: bool = False,
+    verbose: bool = False,
 ) -> dict:
 
-    m, reviewers_vars, reviewers_used_vars, submissions_vars, submissions_covered_vars = construct_mip_variables_for_assignment(
-        bid_profile,
-        bid_weights
-    )
+    (
+        m,
+        reviewers_vars,
+        reviewers_used_vars,
+        submissions_vars,
+        submissions_covered_vars,
+    ) = construct_mip_variables_for_assignment(bid_profile, bid_weights)
 
     if max_num_reviews_asked is not None:
         for r, sub_vars in reviewers_vars.items():
@@ -82,11 +91,19 @@ def find_feasible_assignment(
     status = m.optimize(max_seconds=600)
     if verbose:
         if status == OptimizationStatus.OPTIMAL:
-            print('optimal solution cost {} found'.format(m.objective_value))
+            print("optimal solution cost {} found".format(m.objective_value))
         elif status == OptimizationStatus.FEASIBLE:
-            print('sol.cost {} found, best possible: {}'.format(m.objective_value, m.objective_bound))
+            print(
+                "sol.cost {} found, best possible: {}".format(
+                    m.objective_value, m.objective_bound
+                )
+            )
         elif status == OptimizationStatus.NO_SOLUTION_FOUND:
-            print('no feasible solution found, lower bound is: {}'.format(m.objective_bound))
+            print(
+                "no feasible solution found, lower bound is: {}".format(
+                    m.objective_bound
+                )
+            )
     solution = None
     if status == OptimizationStatus.OPTIMAL or status == OptimizationStatus.FEASIBLE:
         solution = {}
@@ -99,16 +116,16 @@ def find_feasible_assignment(
 
 
 def find_emergency_reviewers(
-    bid_profile: dict,
-    bid_weights: dict,
-    max_num_reviewers: int,
-    verbose: bool = False
+    bid_profile: dict, bid_weights: dict, max_num_reviewers: int, verbose: bool = False
 ) -> dict:
 
-    m, reviewers_vars, reviewers_used_vars, submissions_vars, submissions_covered_vars = construct_mip_variables_for_assignment(
-        bid_profile,
-        bid_weights
-    )
+    (
+        m,
+        reviewers_vars,
+        reviewers_used_vars,
+        submissions_vars,
+        submissions_covered_vars,
+    ) = construct_mip_variables_for_assignment(bid_profile, bid_weights)
 
     # for r, sub_vars in reviewers_vars.items():
     #     for sub_var in sub_vars.values():
@@ -140,11 +157,19 @@ def find_emergency_reviewers(
     status = m.optimize(max_seconds=600)
     if verbose:
         if status == OptimizationStatus.OPTIMAL:
-            print('optimal solution cost {} found'.format(m.objective_value))
+            print("optimal solution cost {} found".format(m.objective_value))
         elif status == OptimizationStatus.FEASIBLE:
-            print('sol.cost {} found, best possible: {}'.format(m.objective_value, m.objective_bound))
+            print(
+                "sol.cost {} found, best possible: {}".format(
+                    m.objective_value, m.objective_bound
+                )
+            )
         elif status == OptimizationStatus.NO_SOLUTION_FOUND:
-            print('no feasible solution found, lower bound is: {}'.format(m.objective_bound))
+            print(
+                "no feasible solution found, lower bound is: {}".format(
+                    m.objective_bound
+                )
+            )
     solution = None
 
     if status == OptimizationStatus.OPTIMAL or status == OptimizationStatus.FEASIBLE:

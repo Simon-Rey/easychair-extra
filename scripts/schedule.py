@@ -1,32 +1,115 @@
 import csv
+import enum
 import os
 
 import time
+from collections.abc import Collection
 
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
-from mip import Model, BINARY, xsum, maximize
+from mip import Model, BINARY, xsum, maximize, OptimizationStatus
 from sklearn.cluster import KMeans, DBSCAN
 
-from easychair_extra.read import read_committee, read_submission
+from easychair_extra.read import read_committee, read_submission, authors_as_list
 from easychair_extra.submission import bid_similarity, topic_similarity
 
 
-class TimeSlot:
-
-    def __init__(self, name, num_rooms, min_num_papers, max_num_papers):
-        self.name = name
-        self.num_rooms = num_rooms
-        self.min_num_papers = min_num_papers
-        self.max_num_papers = max_num_papers
+class Presentation:
+    def __init__(
+        self,
+        name,
+        pairwise_scores=None,
+        title=None,
+        authors=None,
+        duration=None,
+        group_of=None,
+    ):
+        self.name = str(name)
+        self.title = title
+        self.authors = authors
+        self.duration = duration
+        self.group_of = group_of
+        self.pairwise_scores = pairwise_scores
 
     def __hash__(self):
         return hash(self.name)
 
     def __eq__(self, other):
-        return self.name == other
+        if isinstance(other, Presentation):
+            return self.name == other.name
+        return self.name.__eq__(other)
+
+    def __le__(self, other):
+        if isinstance(other, Presentation):
+            return self.name <= other.name
+        return self.name.__le__(other)
+
+    def __lt__(self, other):
+        if isinstance(other, Presentation):
+            return self.name < other.name
+        return self.name.__lt__(other)
+
+    def __str__(self):
+        return str(self.name)
+
+    def __repr__(self):
+        return str(self)
+
+
+class Session:
+    def __init__(self, name, max_duration=None, min_duration=None, presentations=None):
+        self.name = name
+        self.min_duration = min_duration
+        self.max_duration = max_duration
+        if presentations is None:
+            presentations = []
+        self.presentations = presentations
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        if isinstance(other, Session):
+            return self.name == other.name
+        return self.name.__eq__(other)
+
+    def __le__(self, other):
+        if isinstance(other, Session):
+            return self.name <= other.name
+        return self.name.__le__(other)
+
+    def __lt__(self, other):
+        if isinstance(other, Session):
+            return self.name < other.name
+        return self.name.__lt__(other)
+
+    def __str__(self):
+        return str(self.name)
+
+    def __repr__(self):
+        return str(self)
+
+
+class TimeSlot:
+    def __init__(self, name, sessions=None):
+        self.name = name
+        if sessions is None:
+            sessions = []
+        self.sessions = sessions
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        return self.name.__eq__(other)
+
+    def __str__(self):
+        return str(self.name)
+
+    def __repr__(self):
+        return str(self)
 
 
 def avg(iterable):
@@ -40,10 +123,16 @@ def avg(iterable):
     return 0
 
 
-def cluster_submissions(submission_df, submission_similarities, n_clusters=10, algorithm="kmeans"):
-    similarity_matrix = np.array(
-        [[submission_similarities[item1].get(item2, 0) for item2 in submission_similarities] for item1 in submission_similarities])
-    distance_matrix = 1 - similarity_matrix
+def cluster_presentations(
+    presentations: Collection[Presentation], n_clusters: int, algorithm: str = "kmeans"
+):
+    score_matrix = np.array(
+        [
+            [p1.pairwise_scores.get(p2, 0) for p1 in presentations]
+            for p2 in presentations
+        ]
+    )
+    distance_matrix = 1 - score_matrix
     np.fill_diagonal(distance_matrix, 0)
 
     if algorithm == "kmeans":
@@ -51,204 +140,422 @@ def cluster_submissions(submission_df, submission_similarities, n_clusters=10, a
         kmeans.fit(distance_matrix)
         labels = kmeans.labels_
     elif algorithm == "dbscan":
-        dbscan = DBSCAN(metric='precomputed', eps=0.9, min_samples=2)
+        dbscan = DBSCAN(metric="precomputed", eps=0.9, min_samples=2)
         dbscan.fit(distance_matrix)
         labels = dbscan.labels_
-        n_clusters = max(labels) + 1
+        n_clusters = max(labels)
     else:
         raise ValueError("The algorithm is unknown")
 
     clusters = [[] for _ in range(n_clusters)]
-    for item, label in zip(submission_similarities, labels):
-        clusters[label].append(item)
-    for i, c in enumerate(clusters):
-        print(f"Cluster {i}: {len(c)} {c}")
-        # for p in c:
-        #     print(f"\t{p}: {submission_df.loc[submission_df['#'] == p]['title'].iloc[0]}")
+    for item, label in zip(presentations, labels):
+        if label >= 0:
+            clusters[label].append(item)
     return clusters
 
 
-def schedule_flow(submission_df, time_slots, submission_similarities):
+def iterative_merge_clustering(
+    presentations: Collection[Presentation],
+    merging_bound: int,
+    n_cluster_ratio_min: float = 0,
+    n_cluster_ratio_max: float = 1,
+):
+    current_pres = set(presentations)
+    merged = {}
+    while True:
+        global_merged_happened = False
+        min_n_clusters = max(2, int(n_cluster_ratio_min * len(current_pres)))
+        max_n_clusters = min(
+            len(current_pres), int(n_cluster_ratio_max * len(current_pres))
+        )
+        for n_clusters in range(min_n_clusters, max_n_clusters):
+            clusters = cluster_presentations(current_pres, n_clusters)
+            local_merged_happened = False
+            for c in clusters:
+                if len(c) > 1 and sum(p.duration for p in c) <= merging_bound:
+                    current_pres.difference_update(c)
+                    merged_presentation = Presentation(
+                            name=" - ".join(str(p.name) for p in c),
+                            duration=sum(p.duration for p in c),
+                            pairwise_scores={
+                                p2: sum(p1.pairwise_scores[p2] for p1 in c)
+                                for p2 in c[0].pairwise_scores
+                            },
+                            group_of=list(c),
+                        )
+                    current_pres.add(merged_presentation)
+                    for p in c:
+                        merged[p] = merged_presentation.name
+                    print(f"I merged {c}")
+                    local_merged_happened = True
+                    global_merged_happened = True
+            if local_merged_happened:
+                break
+        if not global_merged_happened:
+            break
+    merged = [(k, v) for k, v in merged.items()]
+    pres_names = {p.name for p in presentations}
+    while len(merged) > 0:
+        init_p, target_p = merged.pop()
+        if init_p.name in pres_names:
+            for p in current_pres:
+                p.pairwise_scores[target_p] = p.pairwise_scores[init_p]
+                del p.pairwise_scores[init_p]
+            pres_names.remove(init_p)
+            pres_names.add(target_p)
+        else:
+            merged.append((init_p, target_p))
+    return current_pres
 
-    all_sessions = [s.name + "_" + str(i) for s in time_slots for i in range(s.num_rooms)]
 
-    graph = nx.DiGraph()
+# def schedule_flow(submission_df, time_slots, submission_similarities):
+#
+#     all_sessions = [s.name + "_" + str(i) for s in time_slots for i in range(s.num_rooms)]
+#
+#     graph = nx.DiGraph()
+#
+#     graph.add_node("source", demand=submission_df["#"].count())
+#
+#     for s in all_sessions:
+#         graph.add_edge(s, "target", capacity=1)
+#
+#     for sub_id in submission_df["#"]:
+#         graph.add_edge("source", f"{sub_id}_in", capacity=1)
+#         graph.add_edge(f"{sub_id}_in", f"{sub_id}_out", capacity=1)
+#         for s in all_sessions:
+#             graph.add_edge(f"{sub_id}_out", s, capacity=1)
+#         for sub_id2, sim in submission_similarities[sub_id].items():
+#             if sim > 0:
+#                 graph.add_edge(f"{sub_id}_out", f"{sub_id2}_in", capacity=1, weight=-sim)
+#
+#     flow = nx.max_flow_min_cost(graph, "source", "target")
+#     mincost = nx.cost_of_flow(graph, flow)
+#     print(mincost)
+#
+#     # edge_colors = []
+#     # for u, v in graph.edges():
+#     #     if flow[u][v] > 0:
+#     #         edge_colors.append('black')
+#     #     else:
+#     #         edge_colors.append('lightgrey')
+#     #
+#     # pos = nx.shell_layout(graph)
+#     # nx.draw_networkx_nodes(graph, pos, node_color='skyblue', node_size=700)
+#     # nx.draw_networkx_edges(graph, pos, edge_color=edge_colors, width=2)
+#     # nx.draw_networkx_labels(graph, pos, font_size=12, font_color='black')
+#     # plt.show()
+#
+#     clusters = []
+#     for sub_id in submission_df["#"]:
+#         if flow["source"][f"{sub_id}_in"] > 0.9:
+#             current_cluster = []
+#             current_node = f"{sub_id}_in"
+#             while True:
+#                 next_node = ""
+#                 for node, value in flow[current_node[:-2] + "out"]:
+#                     if value > 0.9:
+#                         next_node = node
+#                 if next_node in all_sessions:
+#                     break
+#                 current_cluster.append(next_node)
+#                 current_node = next_node
+#             clusters.append(current_cluster)
+#     return clusters
 
-    graph.add_node("source", demand=submission_df["#"].count())
 
-    for s in all_sessions:
-        graph.add_edge(s, "target", capacity=1)
-
-    for sub_id in submission_df["#"]:
-        graph.add_edge("source", f"{sub_id}_in", capacity=1)
-        graph.add_edge(f"{sub_id}_in", f"{sub_id}_out", capacity=1)
-        for s in all_sessions:
-            graph.add_edge(f"{sub_id}_out", s, capacity=1)
-        for sub_id2, sim in submission_similarities[sub_id].items():
-            if sim > 0:
-                graph.add_edge(f"{sub_id}_out", f"{sub_id2}_in", capacity=1, weight=-sim)
-
-    flow = nx.max_flow_min_cost(graph, "source", "target")
-    mincost = nx.cost_of_flow(graph, flow)
-    print(mincost)
-
-    # edge_colors = []
-    # for u, v in graph.edges():
-    #     if flow[u][v] > 0:
-    #         edge_colors.append('black')
-    #     else:
-    #         edge_colors.append('lightgrey')
-    #
-    # pos = nx.shell_layout(graph)
-    # nx.draw_networkx_nodes(graph, pos, node_color='skyblue', node_size=700)
-    # nx.draw_networkx_edges(graph, pos, edge_color=edge_colors, width=2)
-    # nx.draw_networkx_labels(graph, pos, font_size=12, font_color='black')
-    # plt.show()
-
-    clusters = []
-    for sub_id in submission_df["#"]:
-        if flow["source"][f"{sub_id}_in"] > 0.9:
-            current_cluster = []
-            current_node = f"{sub_id}_in"
-            while True:
-                next_node = ""
-                for node, value in flow[current_node[:-2] + "out"]:
-                    if value > 0.9:
-                        next_node = node
-                if next_node in all_sessions:
-                    break
-                current_cluster.append(next_node)
-                current_node = next_node
-            clusters.append(current_cluster)
-    return clusters
+class Objectives(enum.Enum):
+    MIN_SCORE = 1
+    TOTAL_SC0RE = 2
+    MIN_THEN_TOTAL_SCORE = 3
 
 
-def schedule_ilp(submission_df, time_slots, submission_similarities):
+def egalitarian_schedule_ilp(
+    presentations: Collection[Presentation], sessions: Collection[Session], max_run_time: int = 300,
+        objective: Objectives = Objectives.MIN_SCORE, initial_solution=False,
+):
     start_time = time.time()
     m = Model()
 
-    subs_with_sim_zero = []
-    for sub_id, similarities in submission_similarities.items():
-        if sum(similarities.values()) == 0:
-            subs_with_sim_zero.append(sub_id)
-    if subs_with_sim_zero:
-        print(f"The following papers are not compatible with any others: {subs_with_sim_zero}")
-    else:
-        print("No paper is completely incompatible.")
-    submission_df = submission_df[~submission_df["#"].isin(subs_with_sim_zero)]
-
-    slot_to_session = {}
-    all_sessions = []
-    for time_slot in time_slots:
-        slot_to_session[time_slot] = []
-        for i in range(time_slot.num_rooms):
-            session_name = time_slot.name + "_" + str(i)
-            all_sessions.append(session_name)
-            slot_to_session[time_slot].append(session_name)
-
-    # Variable: Paper is matched to session
-    sub_to_session_vars = {}
-    for sub_id in submission_df["#"]:
-        sub_to_session_vars[sub_id] = {}
-        for session in all_sessions:
-            sub_to_session_vars[sub_id][session] = m.add_var(name=f"x_{sub_id}_{session}", var_type=BINARY)
+    # Variable: Presentation is in session
+    pres_to_session_vars = {}
+    for presentation in presentations:
+        vars_dict = {}
+        for session in sessions:
+            vars_dict[session] = m.add_var(
+                f"x_{presentation}_{session}", var_type=BINARY
+            )
+        pres_to_session_vars[presentation] = vars_dict
     current_time = time.time()
-    print(f"Added paper vars {current_time - start_time:.5f}")
+    print(f"Added presentations vars in {current_time - start_time:.3f}s")
 
-    # Variable: Papers are together in a session
-    session_together_subs_vars = {}
-    for sub_id1 in submission_df["#"]:
-        session_together_subs_vars[sub_id1] = {}
-        for sub_id2 in submission_df["#"]:
-            session_together_subs_vars[sub_id1][sub_id2] = {}
-            if sub_id1 != sub_id2:
-                if submission_similarities[sub_id1][sub_id2] > 0:
-                    for session in all_sessions:
-                        session_together_subs_vars[sub_id1][sub_id2][session] = m.add_var(name=f"y_{sub_id1}_{sub_id2}_{session}")
-    print(f"Added together vars {time.time() - start_time:.5f} (+{time.time() - current_time:.5f})")
+    # Constraint: All presentations are assigned to exactly one session
+    for vars_dict in pres_to_session_vars.values():
+        m += xsum(vars_dict.values()) == 1
+    print(
+        f"Added presentation to unique session constraints in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+    )
     current_time = time.time()
 
     # Variable: Session is not empty
-    sessions_populated_vars = {}
-    for session in all_sessions:
-        sessions_populated_vars[session] = m.add_var(f"z_{session}", var_type=BINARY)
-    print(f"Added session populated vars {time.time() - start_time:.5f} (+{time.time() - current_time:.5f})")
+    sessions_non_empty_vars = {
+        s: m.add_var(f"y_{s}", var_type=BINARY) for s in sessions
+    }
+    print(
+        f"Added session non empty vars in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+    )
     current_time = time.time()
 
-    # Variable: Score of a session
-    sessions_score_vars = {}
-    for session in all_sessions:
-        sessions_score_vars[session] = m.add_var(f"a_{session}")
-    print(f"Added session score vars {time.time() - start_time:.5f} (+{time.time() - current_time:.5f})")
+    # Constraint: Session not empty
+    for vars_dict in pres_to_session_vars.values():
+        for session, v in vars_dict.items():
+            m += v <= sessions_non_empty_vars[session]
+    print(
+        f"Added session non empty constraints in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+    )
     current_time = time.time()
 
-    # Variable: Score of a paper
-    submissions_score_vars = {}
-    for sub_id in submission_df["#"]:
-        submissions_score_vars[sub_id] = m.add_var(f"b_{sub_id}")
-    print(f"Added paper score vars {time.time() - start_time:.5f} (+{time.time() - current_time:.5f})")
+    # Constraint: Duration of the session
+    for session in sessions:
+        m += (
+            xsum(pres_to_session_vars[p][session] * p.duration for p in presentations)
+            <= session.max_duration
+        )
+        m += (
+            xsum(pres_to_session_vars[p][session] * p.duration for p in presentations)
+            >= session.min_duration * sessions_non_empty_vars[session]
+        )
+    print(
+        f"Added session duration constraints in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+    )
     current_time = time.time()
 
-    # Constraint: Together variables cannot be 1 if not both are 1
-    for sub_id1, other_vars in session_together_subs_vars.items():
-        for sub_id2, session_vars in other_vars.items():
+    # Variable: Papers are together in a session
+    pres_together_vars = {}
+    for pres1 in presentations:
+        pres_together_vars[pres1] = {}
+        for pres2 in presentations:
+            if pres1 != pres2:
+                vars_dict = {}
+                for session in sessions:
+                    vars_dict[session] = m.add_var(
+                        f"z_{pres1}_{pres2}_{session}", var_type=BINARY
+                    )
+                pres_together_vars[pres1][pres2] = vars_dict
+    print(
+        f"Added together vars in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+    )
+    current_time = time.time()
+
+    # Constraint: If together variables are 1 then papers are in session, and reciprocally
+    for pres1, other_vars_dict in pres_together_vars.items():
+        for pres2, session_vars in other_vars_dict.items():
             for session, v in session_vars.items():
-                m += v <= sub_to_session_vars[sub_id1][session]
-                m += v <= sub_to_session_vars[sub_id2][session]
-    # We do not add the complement formula as the direction of optimisation renders it useless
-    print(f"Added together constraints {time.time() - start_time:.5f} (+{time.time() - current_time:.5f})")
+                m += v <= pres_to_session_vars[pres1][session]
+                m += v <= pres_to_session_vars[pres2][session]
+                m += (
+                    pres_to_session_vars[pres1][session]
+                    + pres_to_session_vars[pres2][session]
+                    <= 1 + v
+                )
+    print(
+        f"Added together constraints in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+    )
     current_time = time.time()
 
-    # Constraint: All papers are assigned exactly once
-    for submission_vars in sub_to_session_vars.values():
-        m += xsum(submission_vars.values()) <= 1
-    print(f"Added unicity constraints {time.time() - start_time:.5f} (+{time.time() - current_time:.5f})")
-    current_time = time.time()
+    if objective in [Objectives.MIN_SCORE, Objectives.MIN_THEN_TOTAL_SCORE]:
+        # Variable: Min score of a session
+        sessions_min_score_vars = {
+            session: m.add_var(f"a_{session}") for session in sessions
+        }
+        print(
+            f"Added session min score vars in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+        )
+        current_time = time.time()
 
-    # Constraint: Session is not empty
-    for submission_vars in sub_to_session_vars.values():
-        for session, v in submission_vars.items():
-            m += v <= sessions_populated_vars[session]
-    print(f"Added session populated constraints {time.time() - start_time:.5f} (+{time.time() - current_time:.5f})")
-    current_time = time.time()
+        # Constraint: Min score of a session is min match
+        for pres1, other_vars_dict in pres_together_vars.items():
+            for pres2, session_vars_dict in other_vars_dict.items():
+                for session, v in session_vars_dict.items():
+                    m += (
+                        sessions_min_score_vars[session]
+                        <= pres_together_vars[pres1][pres2][session]
+                        * pres1.pairwise_scores[pres2]
+                        + (1 - pres_together_vars[pres1][pres2][session]) * 100
+                    )
+        for session, v in sessions_min_score_vars.items():
+            m += v <= sessions_non_empty_vars[session] * 100
+        print(
+            f"Added session min score constraints in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+        )
+        current_time = time.time()
 
-    # Constraint: Number of papers per session
-    for time_slot, sessions in slot_to_session.items():
+    if objective in [Objectives.TOTAL_SC0RE, Objectives.MIN_THEN_TOTAL_SCORE]:
+        # Variable: Total score of a session
+        sessions_total_score_vars = {
+            session: m.add_var(f"b_{session}") for session in sessions
+        }
+        print(
+            f"Added session total score vars in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+        )
+        current_time = time.time()
+
+        # Constraint: Total score of a session is total match
+        for session, v in sessions_total_score_vars.items():
+            m += v == xsum(pres_together_vars[pres1][pres2][session] * pres1.pairwise_scores[pres2] for pres1, other_vars_dict in pres_together_vars.items() for pres2 in other_vars_dict)
+        print(
+            f"Added session total score constraints in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+        )
+        current_time = time.time()
+
+    if objective == Objectives.MIN_SCORE:
+        m.objective = maximize(xsum(sessions_min_score_vars.values()))
+        print(
+            f"Added objectives in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+        )
+    elif objective == Objectives.TOTAL_SC0RE:
+        m.objective = maximize(xsum(sessions_total_score_vars.values()))
+        print(
+            f"Added objectives in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+        )
+    elif objective == Objectives.MIN_THEN_TOTAL_SCORE:
+        m.objective = maximize(100 * len(sessions) * xsum(sessions_min_score_vars.values()) + xsum(sessions_total_score_vars.values()))
+        print(
+            f"Added objectives in {time.time() - start_time:.3f}s (+{time.time() - current_time:.3f}s)"
+        )
+    else:
+        raise ValueError("Incorrect value for the objective.")
+
+    if initial_solution:
+        start = [
+            (pres_to_session_vars[p][s], int(p in s.presentations)) for s in sessions for p in presentations
+        ]
+        start += [
+            (pres_together_vars[p1][p2][s], int(p1 in s.presentations and p2 in s.presentations)) for s in sessions for p1, vars_dict in pres_together_vars.items() for p2 in vars_dict
+        ]
+        m.start = start
+
+    opt_status = m.optimize(max_seconds=max_run_time)
+
+    if opt_status in [OptimizationStatus.OPTIMAL, OptimizationStatus.FEASIBLE]:
+        solution = {session: [] for session in sessions}
+        for presentation, vars_dict in pres_to_session_vars.items():
+            for session, v in vars_dict.items():
+                if v.x >= 0.9:
+                    solution[session].append(presentation)
+        return solution
+
+
+def presentation_score_all(presentation: Presentation, presentations: Collection[Presentation]):
+    return tuple(presentation.pairwise_scores[p] for p in presentations if p != presentation)
+
+
+def presentation_score_sum(presentation: Presentation, presentations: Collection[Presentation]):
+    return sum(presentation_score_all(presentation, presentations))
+
+
+def presentation_score_avg(presentation: Presentation, presentations: Collection[Presentation]):
+    return sum(presentation_score_all(presentation, presentations)) / len(presentations)
+
+
+def presentation_score_min(presentation: Presentation, presentations: Collection[Presentation]):
+    return min(presentation_score_all(presentation, presentations))
+
+
+def session_score_min(presentations: Collection[Presentation], presentation_score_func):
+    return min(presentation_score_func(p, presentations) for p in presentations)
+
+
+def session_score_sum(presentations: Collection[Presentation], presentation_score_func):
+    return sum(presentation_score_func(p, presentations) for p in presentations)
+
+
+def session_score_avg(presentations: Collection[Presentation], presentation_score_func):
+    return sum(presentation_score_func(p, presentations) for p in presentations) / len(presentations)
+
+
+def session_score_leximin(presentations: Collection[Presentation], presentation_score_func):
+    return tuple(sorted(presentation_score_func(p, presentations) for p in presentations))
+
+
+def schedule_score_all(sessions: Collection[Session], session_score_func, presentation_score_func):
+    return tuple(session_score_func(s.presentations, presentation_score_func) for s in sessions if len(s.presentations) > 0)
+
+
+def schedule_score_min(sessions: Collection[Session], session_score_func, presentation_score_func):
+    return min(schedule_score_all(sessions, session_score_func, presentation_score_func))
+
+
+def schedule_score_sum(sessions: Collection[Session], session_score_func, presentation_score_func):
+    return sum(schedule_score_all(sessions, session_score_func, presentation_score_func))
+
+
+def schedule_score_avg(sessions: Collection[Session], session_score_func, presentation_score_func):
+    return sum(schedule_score_all(sessions, session_score_func, presentation_score_func)) / len(sessions)
+
+
+def schedule_score_leximin(sessions: Collection[Session], session_score_func, presentation_score_func):
+    res = []
+    for session_score in schedule_score_all(sessions, session_score_func, presentation_score_func):
+        if isinstance(session_score, tuple):
+            for i, s in enumerate(session_score):
+                if len(res) <= i:
+                    res.append(s)
+                else:
+                    res[i] += s
+        else:
+            res.append(session_score)
+    return tuple(sorted(res))
+
+
+def schedule_to_str(sessions: Collection[Session]):
+    res = ""
+    for s in sorted(sessions):
+        for p in sorted(s.presentations):
+            res += str(p)
+    return res
+
+
+def schedule_local_search(
+        sessions: Collection[Session],
+        schedule_score_func=schedule_score_leximin,
+        session_score_func=session_score_leximin,
+        presentation_score_func=presentation_score_avg
+):
+    print("Starting local search")
+    visited_schedules = {schedule_to_str(sessions)}
+    while True:
+        current_score = schedule_score_func(sessions, session_score_func, presentation_score_func)
+        best_new_score = None
+        arg_best_new_score = None
         for session in sessions:
-            session_vars = [sub_vars[session] for sub_vars in sub_to_session_vars.values()]
-            m += xsum(session_vars) <= time_slot.max_num_papers
-            m += xsum(session_vars) >= time_slot.min_num_papers * sessions_populated_vars[session]
-    print(f"Added number of papers per session constraints {time.time() - start_time:.5f} (+{time.time() - current_time:.5f})")
-    current_time = time.time()
-
-    # Constraint: Score of a paper
-    for sub_id, v in submissions_score_vars.items():
-        m += v == xsum(session_together_subs_vars[sub_id][sub_id2].get(session, 0) * submission_similarities[sub_id][sub_id2] for sub_id2 in session_together_subs_vars[sub_id] for session in all_sessions)
-        # m += v >= min(v for s in submission_similarities.values() for v in s.values() if v > 0)
-    print(f"Added paper score constraints {time.time() - start_time:.5f} (+{time.time() - current_time:.5f})")
-    current_time = time.time()
-
-    # Constraint: Score of a session
-    for session, v in sessions_score_vars.items():
-        m += v == xsum(session_together_subs_vars[sub_id1][sub_id2].get(session, 0) * submission_similarities[sub_id1][sub_id2] for sub_id1 in session_together_subs_vars for sub_id2 in session_together_subs_vars[sub_id1])
-        # m += v >= min(min(s.values()) for s in submission_similarities.values())
-    print(f"Added session score constraints {time.time() - start_time:.5f} (+{time.time() - current_time:.5f})")
-    current_time = time.time()
-
-    # Objective: Max score
-    m.objective = maximize(xsum(sessions_score_vars.values()))
-    print(f"Added objectives {time.time() - start_time:.5f} (+{time.time() - current_time:.5f})")
-    current_time = time.time()
-
-    m.optimize(max_seconds=60 * 10)
-
-    solution = {session: [] for session in all_sessions}
-    for paper_id, session_vars in sub_to_session_vars.items():
-        for session, v in session_vars.items():
-            if v.x >= 0.9:
-                solution[session].append(paper_id)
-
-    return solution
+            for presentation in session.presentations:
+                for session2 in sessions:
+                    if session2 != session:
+                        if sum(p.duration for p in session2.presentations) + presentation.duration <= session2.max_duration:
+                            new_sessions = [s for s in sessions if s != session and s != session2]
+                            new_sessions.append(Session(
+                                    name="tmp_session1",
+                                    presentations=list(session2.presentations) + [presentation]
+                            ))
+                            new_sessions.append(Session(
+                                    name="tmp_session2",
+                                    presentations=[p for p in session.presentations if p != presentation]
+                            ))
+                            new_sessions_str = schedule_to_str(new_sessions)
+                            if new_sessions_str not in visited_schedules:
+                                new_score = schedule_score_func(new_sessions, session_score_func, presentation_score_func)
+                                if new_score > current_score:
+                                    if best_new_score is None or new_score > best_new_score:
+                                        best_new_score = new_score
+                                        arg_best_new_score = (session, session2, presentation)
+        if arg_best_new_score is not None:
+            session, session2, presentation = arg_best_new_score
+            session.presentations.remove(presentation)
+            session2.presentations.append(presentation)
+            print(f"I'm moving {presentation} from {session} to {session2}")
+        else:
+            print("No improvement, I'm stopping.")
+            break
 
 
 def schedule_to_csv(schedule, submission_df, file_path):
@@ -258,7 +565,14 @@ def schedule_to_csv(schedule, submission_df, file_path):
 
         for session, papers in schedule.items():
             for paper in papers:
-                writer.writerow([session.split("_")[0], session.split("_")[1], paper, submission_df.loc[submission_df['#'] == paper]['title'].iloc[0]])
+                writer.writerow(
+                    [
+                        session.split("_")[0],
+                        session.split("_")[1],
+                        paper,
+                        submission_df.loc[submission_df["#"] == paper]["title"].iloc[0],
+                    ]
+                )
 
 
 def compute_paper_score(paper, papers, submission_similarities):
@@ -291,7 +605,8 @@ def schedule_to_html(schedule, submission_df, file_path, submission_similarities
                     schedule_per_slot[time_slot][session_name] = papers
                 else:
                     schedule_per_slot[time_slot] = {session_name: papers}
-        f.write("""<!DOCTYPE html>
+        f.write(
+            """<!DOCTYPE html>
 <html lang="en"><head>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <meta charset="UTF-8">
@@ -301,17 +616,50 @@ def schedule_to_html(schedule, submission_df, file_path, submission_similarities
 </head>
 <body>
 <header><h1>ECAI-2024 — Schedule</h1></header>
-<main>""")
+<main>"""
+        )
         for time_slot, schedule in schedule_per_slot.items():
             f.write(f"<section><div class='section-content'><h2>{time_slot}</h2>")
             for session, papers in schedule.items():
-                f.write(f"<h3>Session {session} (s = {compute_session_total_score(papers, submission_similarities):.3f}, min = {compute_session_min_score(papers, submission_similarities):.3f})</h3>")
-                f.write("""<table class="lined-table"><tr><th>Paper</th><th>Score</th></tr>""")
+                f.write(
+                    f"<h3>Session {session} (s = {compute_session_total_score(papers, submission_similarities):.3f}, min = {compute_session_min_score(papers, submission_similarities):.3f})</h3>"
+                )
+                f.write(
+                    """<table class="lined-table"><tr><th>Paper</th><th>Score</th></tr>"""
+                )
                 for paper in papers:
-                    f.write(f"<tr><td>#{paper}: {submission_df.loc[submission_df['#'] == paper]['title'].iloc[0]}</td><td>{compute_paper_score(paper, papers, submission_similarities)}</td></tr>")
+                    f.write(
+                        f"<tr><td>#{paper}: {submission_df.loc[submission_df['#'] == paper]['title'].iloc[0]}</td><td>{compute_paper_score(paper, papers, submission_similarities)}</td></tr>"
+                    )
                 f.write("</table>")
             f.write("</div></section>")
         f.write("</main></body></html>")
+
+
+def draw_similarities(similarities, num_bins):
+    all_s = [s for sim_dict in similarities.values() for s in sim_dict.values()]
+    bin_step = max(all_s)/num_bins
+    bins_cutoff = [bin_step * k for k in range(num_bins + 1)]
+    data = [0 for _ in bins_cutoff]
+    for s in all_s:
+        cutoff = 0
+        while cutoff < num_bins and s >= bins_cutoff[cutoff]:
+            cutoff += 1
+        if cutoff > 0:
+            data[cutoff - 1] += 1
+
+    labels = [f"{round(bins_cutoff[i], 2)} - {round(bins_cutoff[i + 1], 2)}" for i in
+              range(num_bins)]
+    labels.append(f"{round(bins_cutoff[-1], 2)} - {max(all_s)}")
+    fig, ax = plt.subplots()
+    ax.bar(labels, data)
+    ax.set_yscale('log')
+    plt.xticks(rotation=45, ha='right')
+    plt.xlabel('Similarity Bins')
+    plt.ylabel('Frequency')
+    plt.title('Distribution of Similarities')
+    plt.tight_layout()
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -319,57 +667,97 @@ if __name__ == "__main__":
 
     committee = read_committee(
         os.path.join(csv_dir, "committee.csv"),
-        bids_file_path=os.path.join(csv_dir, "bidding.csv")
+        bids_file_path=os.path.join(csv_dir, "bidding.csv"),
     )
 
     submissions = read_submission(
         os.path.join(csv_dir, "submission.csv"),
         review_file_path=os.path.join(csv_dir, "review.csv"),
-        submission_topic_file_path=os.path.join(csv_dir, "submission_topic.csv")
+        submission_topic_file_path=os.path.join(csv_dir, "submission_topic.csv"),
     )
-    submissions["avg_total_scores"] = submissions.apply(lambda df_row: avg(df_row.get("total_scores", [])),
-                                      axis=1)
-    top_submissions = submissions.sort_values("avg_total_scores", ascending=False).head(500)
-    # with pd.option_context('display.max_rows', None, 'display.max_columns', 6, 'max_colwidth', 100):
-    #     print(top_submissions.head(50))
+    submissions["avg_total_scores"] = submissions.apply(
+        lambda df_row: avg(df_row.get("total_scores", [])), axis=1
+    )
+    top_submissions = submissions.sort_values("avg_total_scores", ascending=False).head(
+        500
+    )
 
-    bid_level_weights = {'yes': 1, 'maybe': 0.5}
+    bid_level_weights = {"yes": 1, "maybe": 0.5}
 
     bid_sim = bid_similarity(top_submissions, committee, bid_level_weights)
+    # draw_similarities(bid_sim, 10)
     topic_sim = topic_similarity(top_submissions)
+    # draw_similarities(topic_sim, 10)
     aggregated_similarity = {}
     for sub_id1, similarities in bid_sim.items():
         aggregated_similarity[sub_id1] = {}
         for sub_id2, s in similarities.items():
-            aggregated_similarity[sub_id1][sub_id2] = s * topic_sim[sub_id1][sub_id2]
-    # aggregated_similarity = bid_sim
+            if sub_id1 == sub_id2:
+               aggregated_similarity[sub_id1][sub_id2] = 0
+            else:
+                s2 = topic_sim[sub_id1][sub_id2]
+                if s * s2 == 0 and s + s2 > 0:
+                    aggregated_similarity[sub_id1][sub_id2] = max(1, int(max(s, s2) * 10))
+                else:
+                    aggregated_similarity[sub_id1][sub_id2] = max(1, int(s * s2 * 1000))
+    print(f"Number of 0 similarity: {len([s for d in aggregated_similarity.values() for s in d.values() if s == 0])}")
+    # draw_similarities(aggregated_similarity, 40)
+
+    all_presentations = []
+    top_submissions.apply(
+        lambda df_row: all_presentations.append(
+            Presentation(
+                df_row["#"],
+                title=df_row["title"],
+                authors=authors_as_list(df_row["authors"]),
+                pairwise_scores={str(k): v for k, v in aggregated_similarity[df_row["#"]].items()},
+                duration=1,
+            )
+        ),
+        axis=1,
+    )
 
     all_time_slots = [
-        TimeSlot("Mon-am", 10, 5, 10),
-        TimeSlot("Mon-pm", 10, 5, 10),
-        TimeSlot("Tue-am", 10, 5, 10),
-        TimeSlot("Tue-pm", 10, 5, 10),
-        TimeSlot("Wed-am", 10, 5, 10),
-        TimeSlot("Wed-pm", 10, 5, 10),
-        TimeSlot("Thu-am", 10, 5, 10)
+        TimeSlot("Mon-am"),
+        TimeSlot("Mon-pm"),
+        TimeSlot("Tue-am"),
+        TimeSlot("Tue-pm"),
+        TimeSlot("Wed-am"),
+        TimeSlot("Wed-pm"),
+        TimeSlot("Thu-am"),
     ]
+
+    for t in all_time_slots:
+        for k in range(1, 11):
+            t.sessions.append(Session(f"{t.name}_{k}", min_duration=5, max_duration=10))
 
     # s = schedule_ilp(top_submissions, all_time_slots, aggregated_similarity)
     # schedule_to_csv(s, submissions, "final_schedule.csv")
     # schedule_to_html(s, submissions, "final_schedule.html", aggregated_similarity)
 
-    # schedule_flow(top_submissions, all_time_slots, aggregated_similarity)
-    #
-    clusters = cluster_submissions(top_submissions, aggregated_similarity, n_clusters=20, algorithm="kmeans")
+    # all_presentations = all_presentations[:60]
+    # all_time_slots = all_time_slots[:1]
+    merged_presentations = iterative_merge_clustering(
+        all_presentations, 6, n_cluster_ratio_min=0, n_cluster_ratio_max=0.1
+    )
+    print(len(merged_presentations))
+    all_presentations = merged_presentations
 
-    # first_cluster_df = top_submissions[top_submissions["#"].isin(clusters[0])]
-    # s = schedule_ilp(first_cluster_df, all_time_slots, aggregated_similarity)
-    # schedule_to_csv(s, first_cluster_df, "final_schedule.csv")
-    # schedule_to_html(s, first_cluster_df, "final_schedule.html", aggregated_similarity)
+    # clusters = cluster_presentations(merged_presentations, 10, algorithm="kmeans")
+    # for i, c in enumerate(clusters):
+    #     print(f"Cluster {i}: {sum(p.duration for p in c)} {c}")
 
-    # other_clusters = [p for c in clusters[1:] for p in c]
-    # other_cluster_df = top_submissions[top_submissions["#"].isin(other_clusters)]
-    # s = schedule_ilp(other_cluster_df, all_time_slots, aggregated_similarity)
-    # schedule_to_csv(s, other_cluster_df, "final_schedule.csv")
-    # schedule_to_html(s, other_cluster_df, "final_schedule.html", aggregated_similarity)
-
+    schedule = egalitarian_schedule_ilp(all_presentations, [s for t in all_time_slots for s in t.sessions], max_run_time=120, objective=Objectives.MIN_SCORE)
+    for session, presentations in schedule.items():
+        session.presentations = presentations
+    schedule = egalitarian_schedule_ilp(all_presentations, [s for t in all_time_slots for s in t.sessions], max_run_time=120, objective=Objectives.MIN_THEN_TOTAL_SCORE, initial_solution=True)
+    for session, presentations in schedule.items():
+        session.presentations = presentations
+    schedule_local_search(schedule.keys())
+    for s, pres in schedule.items():
+        if len(pres) > 0:
+            print(f"{s}: {len(pres)} {pres} min={session_score_min(pres, presentation_score_avg)}, avg={session_score_avg(pres, presentation_score_avg)},  total={session_score_sum(pres, presentation_score_avg)}")
+        else:
+            print(f"{s}: {len(pres)} {pres}")
+    print(f"TOTAL: min={schedule_score_min(schedule.keys(), session_score_min, presentation_score_avg)}, total={schedule_score_sum(schedule.keys(), session_score_min, presentation_score_avg)}")
+    print(f"leximin={schedule_score_leximin(schedule.keys(), session_score_min, presentation_score_avg)}")

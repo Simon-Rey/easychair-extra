@@ -3,6 +3,22 @@ import csv
 import pandas as pd
 
 
+def authors_as_list(authors):
+    and_split = authors.split(" and ")
+    if len(and_split) == 2:
+        last_author = and_split[1]
+        authors = and_split[0]
+    elif len(and_split) == 1:
+        last_author = None
+        authors = and_split[0]
+    else:
+        raise ValueError("The and split returned more than 2 values")
+    res = [a.strip() for a in authors.split(",")]
+    if last_author:
+        res.append(last_author)
+    return res
+
+
 def read_topic(topic_file_path):
     area_topics = {}
     topics_area = {}
@@ -24,19 +40,23 @@ def read_topic(topic_file_path):
     return area_topics, topics_area
 
 
-def read_committee(committee_file_path,
-                   *,
-                   committee_topic_file_path=None,
-                   topics_to_areas=None,
-                   bids_file_path=None):
-    df = pd.read_csv(committee_file_path, delimiter=',', encoding="utf-8")
+def read_committee(
+    committee_file_path,
+    *,
+    committee_topic_file_path=None,
+    topics_to_areas=None,
+    bids_file_path=None,
+):
+    df = pd.read_csv(committee_file_path, delimiter=",", encoding="utf-8")
     df["person #"] = pd.to_numeric(df["person #"], downcast="integer")
     df["full name"] = df["first name"] + " " + df["last name"]
 
     if committee_topic_file_path:
         if not topics_to_areas:
-            raise ValueError("If you set the committee_topic_file_path, then you also need to "
-                             "provide the topics_to_areas mapping.")
+            raise ValueError(
+                "If you set the committee_topic_file_path, then you also need to "
+                "provide the topics_to_areas mapping."
+            )
         pc_to_topics = {}
         pc_to_areas = {}
         with open(committee_topic_file_path, encoding="utf-8") as f:
@@ -53,7 +73,9 @@ def read_committee(committee_file_path,
                     pc_to_areas[member_id].append(area)
                 else:
                     pc_to_areas[member_id] = [area]
-        df["topics"] = df.apply(lambda df_row: pc_to_topics.get(df_row["#"], []), axis=1)
+        df["topics"] = df.apply(
+            lambda df_row: pc_to_topics.get(df_row["#"], []), axis=1
+        )
         df["areas"] = df.apply(lambda df_row: pc_to_areas.get(df_row["#"], []), axis=1)
 
     if bids_file_path:
@@ -65,7 +87,7 @@ def read_committee(committee_file_path,
                 member_id = int(row["member #"])
                 submission = int(row["submission #"])
                 bid = row["bid"]
-                bid_levels.add(bid.strip().replace(' ', '_'))
+                bid_levels.add(bid.strip().replace(" ", "_"))
                 if member_id in pc_to_bids:
                     if bid in pc_to_bids[member_id]:
                         pc_to_bids[member_id][bid].append(submission)
@@ -87,15 +109,15 @@ def read_committee(committee_file_path,
 
 
 def read_submission(
-        submission_file_path,
-        *,
-        submission_topic_file_path=None,
-        author_file_path=None,
-        review_file_path=None,
-        submission_field_value_path=None,
-        topics_to_areas=None,
+    submission_file_path,
+    *,
+    submission_topic_file_path=None,
+    author_file_path=None,
+    review_file_path=None,
+    submission_field_value_path=None,
+    topics_to_areas=None,
 ):
-    df = pd.read_csv(submission_file_path, delimiter=',', encoding="utf-8")
+    df = pd.read_csv(submission_file_path, delimiter=",", encoding="utf-8")
     df.drop(df[df["deleted?"] == "yes"].index, inplace=True)
     df.drop(df[df["decision"] == "desk reject"].index, inplace=True)
 
@@ -117,9 +139,13 @@ def read_submission(
                         sub_to_areas[sub_id].append(area)
                     else:
                         sub_to_areas[sub_id] = [area]
-        df["topics"] = df.apply(lambda df_row: sub_to_topics.get(df_row["#"], []), axis=1)
+        df["topics"] = df.apply(
+            lambda df_row: sub_to_topics.get(df_row["#"], []), axis=1
+        )
         if topics_to_areas:
-            df["areas"] = df.apply(lambda df_row: sub_to_areas.get(df_row["#"], []), axis=1)
+            df["areas"] = df.apply(
+                lambda df_row: sub_to_areas.get(df_row["#"], []), axis=1
+            )
 
     if author_file_path:
         sub_to_authors = {}
@@ -132,7 +158,9 @@ def read_submission(
                     sub_to_authors[sub_id].append(person_id)
                 else:
                     sub_to_authors[sub_id] = [person_id]
-        df["authors_id"] = df.apply(lambda df_row: sub_to_authors.get(df_row["#"], []), axis=1)
+        df["authors_id"] = df.apply(
+            lambda df_row: sub_to_authors.get(df_row["#"], []), axis=1
+        )
 
     if submission_field_value_path:
         sub_to_is_students = {}
@@ -143,8 +171,9 @@ def read_submission(
                 field_name = row["field name"]
                 if field_name == "student-paper":
                     sub_to_is_students[sub_id] = row["value"] == "allstudent"
-        df["all_authors_students"] = df.apply(lambda df_row: sub_to_is_students.get(df_row["#"], False),
-                                              axis=1)
+        df["all_authors_students"] = df.apply(
+            lambda df_row: sub_to_is_students.get(df_row["#"], False), axis=1
+        )
 
     if review_file_path:
         sub_to_total_scores = {}
@@ -157,6 +186,7 @@ def read_submission(
                     sub_to_total_scores[sub_id].append(total_score)
                 else:
                     sub_to_total_scores[sub_id] = [total_score]
-        df["total_scores"] = df.apply(lambda df_row: sub_to_total_scores.get(df_row["#"], []),
-                                      axis=1)
+        df["total_scores"] = df.apply(
+            lambda df_row: sub_to_total_scores.get(df_row["#"], []), axis=1
+        )
     return df

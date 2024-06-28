@@ -1,4 +1,3 @@
-
 def papers_without_pc(committee_df, submission_df):
     def aux(row):
         if row["all_authors_students"]:

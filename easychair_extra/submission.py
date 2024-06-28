@@ -1,4 +1,3 @@
-
 def bid_similarity(submission_df, committee_df, bid_level_weight):
     all_paper_ids = submission_df["#"].tolist()
     number_co_bidders = {p1: {p2: 0 for p2 in all_paper_ids} for p1 in all_paper_ids}
@@ -41,7 +40,9 @@ def topic_similarity(submission_df):
     def compute_similarity(df_row):
         paper_id = df_row["#"]
         paper_topics = df_row["topics"]
-        submission_df.apply(lambda r: pairwise_similarity(r, paper_id, paper_topics), axis=1)
+        submission_df.apply(
+            lambda r: pairwise_similarity(r, paper_id, paper_topics), axis=1
+        )
 
     all_paper_ids = submission_df["#"].tolist()
     similarity = {p1: {p2: 0 for p2 in all_paper_ids} for p1 in all_paper_ids}

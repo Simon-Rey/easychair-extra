@@ -6,7 +6,7 @@ from reviewassignment import find_feasible_assignment, committee_to_bid_profile
 if __name__ == "__main__":
     committee = read_committee(
         os.path.join("csv", "committee.csv"),
-        bids_file_path=os.path.join("csv", "bidding.csv")
+        bids_file_path=os.path.join("csv", "bidding.csv"),
     )
 
     submissions = read_submission(os.path.join("csv", "submission.csv"))
@@ -17,7 +17,7 @@ if __name__ == "__main__":
     reviewers = committee[committee["role"] == "PC member"]
     print(reviewers)
 
-    bid_level_weights = {'yes': 1, 'maybe': 0.5}
+    bid_level_weights = {"yes": 1, "maybe": 0.5}
     bid_profile = committee_to_bid_profile(reviewers, submissions, bid_level_weights)
 
     all_paper_ids = set(submissions["#"].values)
@@ -27,9 +27,11 @@ if __name__ == "__main__":
         all_papers_with_bids.update(bids["maybe"])
     all_papers_without_bids = all_paper_ids - all_papers_with_bids
 
-    print(f"There are {len(all_paper_ids)} papers and "
-          f"{len(all_paper_ids) - len(all_papers_without_bids)} of them received bids (missing "
-          f"{len(all_papers_without_bids)}).")
+    print(
+        f"There are {len(all_paper_ids)} papers and "
+        f"{len(all_paper_ids) - len(all_papers_without_bids)} of them received bids (missing "
+        f"{len(all_papers_without_bids)})."
+    )
     print("The following papers have not received bids:")
     for p in all_paper_ids:
         if p not in all_papers_with_bids:
@@ -46,7 +48,7 @@ if __name__ == "__main__":
             bid_profile,
             bid_level_weights,
             number_max_review_per_reviewer,
-            number_review_per_paper
+            number_review_per_paper,
         )
         if reviewers_assignment:
             num_assigned = sum(len(p) for p in reviewers_assignment.values())
@@ -55,7 +57,8 @@ if __name__ == "__main__":
                 f"maximum of {number_max_review_per_reviewer} reviews per reviewers: "
                 f"{num_assigned} (+{num_assigned - num_assigned_previous}) reviews in total for "
                 f"{len(submissions.index) * number_review_per_paper} needed (missing "
-                f"{len(submissions.index) * number_review_per_paper - num_assigned}).")
+                f"{len(submissions.index) * number_review_per_paper - num_assigned})."
+            )
             if num_assigned == num_assigned_previous:
                 break
             num_assigned_previous = num_assigned
@@ -63,12 +66,14 @@ if __name__ == "__main__":
             print(f"\tProblem solving the ILP...")
             break
 
-    print("\n" + "=" * 43 + "\n   Checking the specific case of max 4 papers per reviewer\n" + "=" * 43)
+    print(
+        "\n"
+        + "=" * 43
+        + "\n   Checking the specific case of max 4 papers per reviewer\n"
+        + "=" * 43
+    )
     reviewers_assignment = find_feasible_assignment(
-        bid_profile,
-        bid_level_weights,
-        4,
-        number_review_per_paper
+        bid_profile, bid_level_weights, 4, number_review_per_paper
     )
     papers_assignment = {}
     for r, a in reviewers_assignment.items():
@@ -78,10 +83,15 @@ if __name__ == "__main__":
             else:
                 papers_assignment[p] = [r]
 
-    not_fulfilled_papers = sorted((p for p, a in papers_assignment.items() if len(a) < number_review_per_paper), key=lambda x: len(papers_assignment[p]))
+    not_fulfilled_papers = sorted(
+        (p for p, a in papers_assignment.items() if len(a) < number_review_per_paper),
+        key=lambda x: len(papers_assignment[p]),
+    )
     print(
         f"{len(not_fulfilled_papers)} papers have not been assigned {number_review_per_paper} "
         f"reviews:"
     )
     for p in not_fulfilled_papers:
-        print(f"\t{p} - {submissions.loc[submissions['#'] == p]['title'].iloc[0]} ({len(papers_assignment[p])} reviews)")
+        print(
+            f"\t{p} - {submissions.loc[submissions['#'] == p]['title'].iloc[0]} ({len(papers_assignment[p])} reviews)"
+        )
