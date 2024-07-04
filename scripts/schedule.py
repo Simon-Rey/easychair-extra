@@ -3,7 +3,8 @@ import enum
 import os
 
 import time
-from collections.abc import Collection
+from collections.abc import Collection, Callable, Iterable
+from multiprocessing import Pool
 
 import networkx as nx
 import numpy as np
@@ -65,7 +66,7 @@ class Session:
         self.max_duration = max_duration
         if presentations is None:
             presentations = []
-        self.presentations: list = presentations
+        self.presentations = presentations
 
     def __hash__(self):
         return hash(self.name)
@@ -125,7 +126,7 @@ def avg(iterable):
 
 def cluster_presentations(
     presentations: Collection[Presentation], n_clusters: int, algorithm: str = "kmeans"
-):
+) -> list[list[Presentation]]:
     score_matrix = np.array(
         [
             [p1.pairwise_scores.get(p2, 0) for p1 in presentations]
@@ -136,6 +137,7 @@ def cluster_presentations(
     np.fill_diagonal(distance_matrix, 0)
 
     if algorithm == "kmeans":
+        os.environ['OMP_NUM_THREADS'] = '16'
         kmeans = KMeans(n_clusters=n_clusters, random_state=0)
         kmeans.fit(distance_matrix)
         labels = kmeans.labels_
@@ -159,8 +161,9 @@ def iterative_merge_clustering(
     merging_bound: int,
     n_cluster_ratio_min: float = 0,
     n_cluster_ratio_max: float = 1,
-):
+) -> set[Presentation]:
     current_pres = set(presentations)
+    new_presentations = set()
     while True:
         global_merged_happened = False
         min_n_clusters = max(2, int(n_cluster_ratio_min * len(current_pres)))
@@ -172,6 +175,7 @@ def iterative_merge_clustering(
             local_merged_happened = False
             for c in clusters:
                 if len(c) > 1 and sum(p.duration for p in c) <= merging_bound:
+                    print(f"Merging {c}")
                     current_pres.difference_update(c)
                     new_group = []
                     for p in c:
@@ -181,80 +185,99 @@ def iterative_merge_clustering(
                             new_group.append(p)
                     merged_presentation = Presentation(
                             name=" - ".join(str(p.name) for p in new_group),
-                            duration=sum(p.duration for p in c),
+                            duration=sum(p.duration for p in new_group),
                             pairwise_scores={
-                                p2: sum(p1.pairwise_scores[p2] for p1 in c)
-                                for p2 in c[0].pairwise_scores
+                                p2: sum(p1.pairwise_scores[p2] for p1 in c) / len(c)
+                                for p2 in current_pres.union(new_presentations)
                             },
                             group_of=new_group,
                         )
-                    merged_presentation.pairwise_scores[merged_presentation] = 0
-                    current_pres.add(merged_presentation)
-                    for p in current_pres:
+                    merged_presentation.pairwise_scores[merged_presentation] = sum(p1.pairwise_scores[p2] for p1 in c for p2 in c) / len(c)
+                    new_presentations.add(merged_presentation)
+                    for p in current_pres.union(new_presentations):
                         p.pairwise_scores[merged_presentation] = merged_presentation.pairwise_scores[p]
-                    print(f"I merged {c}, new length = {len(current_pres)}")
+                    print(f"\t...done, new len = {len(current_pres)}")
                     local_merged_happened = True
                     global_merged_happened = True
             if local_merged_happened:
                 break
         if not global_merged_happened:
-            break
+            if len(new_presentations) > 0:
+                current_pres = current_pres.union(new_presentations)
+                new_presentations = set()
+                print(f"Remixing the new presentations in: len is now {len(current_pres)}")
+            else:
+                break
     return current_pres
 
 
-# def schedule_flow(submission_df, time_slots, submission_similarities):
-#
-#     all_sessions = [s.name + "_" + str(i) for s in time_slots for i in range(s.num_rooms)]
-#
-#     graph = nx.DiGraph()
-#
-#     graph.add_node("source", demand=submission_df["#"].count())
-#
-#     for s in all_sessions:
-#         graph.add_edge(s, "target", capacity=1)
-#
-#     for sub_id in submission_df["#"]:
-#         graph.add_edge("source", f"{sub_id}_in", capacity=1)
-#         graph.add_edge(f"{sub_id}_in", f"{sub_id}_out", capacity=1)
-#         for s in all_sessions:
-#             graph.add_edge(f"{sub_id}_out", s, capacity=1)
-#         for sub_id2, sim in submission_similarities[sub_id].items():
-#             if sim > 0:
-#                 graph.add_edge(f"{sub_id}_out", f"{sub_id2}_in", capacity=1, weight=-sim)
-#
-#     flow = nx.max_flow_min_cost(graph, "source", "target")
-#     mincost = nx.cost_of_flow(graph, flow)
-#     print(mincost)
-#
-#     # edge_colors = []
-#     # for u, v in graph.edges():
-#     #     if flow[u][v] > 0:
-#     #         edge_colors.append('black')
-#     #     else:
-#     #         edge_colors.append('lightgrey')
-#     #
-#     # pos = nx.shell_layout(graph)
-#     # nx.draw_networkx_nodes(graph, pos, node_color='skyblue', node_size=700)
-#     # nx.draw_networkx_edges(graph, pos, edge_color=edge_colors, width=2)
-#     # nx.draw_networkx_labels(graph, pos, font_size=12, font_color='black')
-#     # plt.show()
-#
-#     clusters = []
-#     for sub_id in submission_df["#"]:
-#         if flow["source"][f"{sub_id}_in"] > 0.9:
-#             current_cluster = []
-#             current_node = f"{sub_id}_in"
-#             while True:
-#                 next_node = ""
-#                 for node, value in flow[current_node[:-2] + "out"]:
-#                     if value > 0.9:
-#                         next_node = node
-#                 if next_node in all_sessions:
-#                     break
-#                 current_cluster.append(next_node)
-#                 current_node = next_node
-#             clusters.append(current_cluster)
-#     return clusters
+def schedule_flow(presentations: Collection[Presentation], sessions: Collection[Session]) -> dict[Session, list[Presentation]]:
+    graph = nx.DiGraph()
+
+    graph.add_node("source", demand=sum(p.duration for p in presentations))
+
+    print("Building network flow")
+    for session in sessions:
+        graph.add_edge(session, "target", capacity=1)
+
+    for presentation in presentations:
+        graph.add_edge("source", f"{presentation}_in", capacity=1)
+        graph.add_edge(f"{presentation}_in", f"{presentation}_out", capacity=1)
+        for session in sessions:
+            graph.add_edge(f"{presentation}_out", session, capacity=1)
+
+        for presentation2 in presentations:
+            score = presentation.pairwise_scores.get(presentation2, 0)
+            if score > 0:
+                graph.add_edge(f"{presentation}_out", f"{presentation2}_in", capacity=1, weight=-score)
+    print(f"Done, {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges")
+
+    flow = nx.max_flow_min_cost(graph, "source", "target")
+    for source in flow:
+        print(source)
+        for target, value in flow[source].items():
+            if value > 0:
+                print(f"\t{target} ({value})")
+    mincost = nx.cost_of_flow(graph, flow)
+    print(f"Minimum cost of value {mincost} found")
+
+    schedule = {session: [] for session in sessions}
+    session_names = {session.name for session in sessions}
+    for presentation in presentations:
+        if flow["source"][f"{presentation}_in"] > 0.9:
+            print(f"Flow for {presentation}")
+            connected_presentations = [presentation]
+            current_node = f"{presentation}_in"
+            while True:
+                next_node = ""
+                for node, value in flow[current_node[:-2] + "out"].items():
+                    if value > 0.9:
+                        print(f"\tfound flow to {node}")
+                        next_node = node
+                print(f"\tnext node is {next_node}")
+                if next_node in session_names:
+                    break
+                for p in presentations:
+                    if p.name == next_node[:-3]:
+                        connected_presentations.append(p)
+                current_node = next_node
+            print(f"For {next_node} with {connected_presentations}")
+            schedule[next_node] = connected_presentations
+    print(schedule)
+
+    edge_colors = []
+    for u, v in graph.edges():
+        if flow[u][v] > 0:
+            edge_colors.append('black')
+        else:
+            edge_colors.append('lightgrey')
+
+    pos = nx.shell_layout(graph)
+    nx.draw_networkx_nodes(graph, pos, node_color='skyblue', node_size=700)
+    nx.draw_networkx_edges(graph, pos, edge_color=edge_colors, width=2)
+    nx.draw_networkx_labels(graph, pos, font_size=12, font_color='black')
+    plt.show()
+    return schedule
 
 
 class Objectives(enum.Enum):
@@ -266,7 +289,7 @@ class Objectives(enum.Enum):
 def egalitarian_schedule_ilp(
     presentations: Collection[Presentation], sessions: Collection[Session], max_run_time: int = 300,
         objective: Objectives = Objectives.MIN_SCORE, initial_solution=False,
-):
+) -> dict[Session, list[Presentation]]:
     start_time = time.time()
     m = Model()
 
@@ -452,11 +475,17 @@ def presentation_score_avg(presentation: Presentation, presentations: Collection
 
 
 def presentation_score_min(presentation: Presentation, presentations: Collection[Presentation]):
-    return min(presentation_score_all(presentation, presentations))
+    all_scores = presentation_score_all(presentation, presentations)
+    if all_scores:
+        return min(all_scores)
+    return 0
 
 
 def session_score_min(presentations: Collection[Presentation], presentation_score_func):
-    return min(presentation_score_func(p, presentations) for p in presentations)
+    all_scores = [presentation_score_func(p, presentations) for p in presentations]
+    if all_scores:
+        return min(all_scores)
+    return 0
 
 
 def session_score_sum(presentations: Collection[Presentation], presentation_score_func):
@@ -476,7 +505,10 @@ def schedule_score_all(sessions: Collection[Session], session_score_func, presen
 
 
 def schedule_score_min(sessions: Collection[Session], session_score_func, presentation_score_func):
-    return min(schedule_score_all(sessions, session_score_func, presentation_score_func))
+    all_scores = schedule_score_all(sessions, session_score_func, presentation_score_func)
+    if all_scores:
+        return min(all_scores)
+    return 0
 
 
 def schedule_score_sum(sessions: Collection[Session], session_score_func, presentation_score_func):
@@ -487,7 +519,7 @@ def schedule_score_avg(sessions: Collection[Session], session_score_func, presen
     return sum(schedule_score_all(sessions, session_score_func, presentation_score_func)) / len(sessions)
 
 
-def schedule_score_leximin(sessions: Collection[Session], session_score_func, presentation_score_func):
+def schedule_score_additive_leximin(sessions: Collection[Session], session_score_func, presentation_score_func):
     res = []
     for session_score in schedule_score_all(sessions, session_score_func, presentation_score_func):
         if isinstance(session_score, tuple):
@@ -496,6 +528,16 @@ def schedule_score_leximin(sessions: Collection[Session], session_score_func, pr
                     res.append(s)
                 else:
                     res[i] += s
+        else:
+            res.append(session_score)
+    return tuple(sorted(res))
+
+
+def schedule_score_leximin(sessions: Collection[Session], session_score_func, presentation_score_func):
+    res = []
+    for session_score in schedule_score_all(sessions, session_score_func, presentation_score_func):
+        if isinstance(session_score, Iterable):
+            res.extend(session_score)
         else:
             res.append(session_score)
     return tuple(sorted(res))
@@ -511,12 +553,13 @@ def schedule_to_str(sessions: Collection[Session]):
 
 def schedule_local_search(
         sessions: Collection[Session],
-        schedule_score_func=schedule_score_leximin,
+        schedule_score_func=schedule_score_additive_leximin,
         session_score_func=session_score_leximin,
         presentation_score_func=presentation_score_avg
 ):
     print("Starting local search")
     visited_schedules = {schedule_to_str(sessions)}
+    name_to_session = {s.name: s for s in sessions}
     while True:
         current_score = schedule_score_func(sessions, session_score_func, presentation_score_func)
         best_new_score = None
@@ -525,82 +568,90 @@ def schedule_local_search(
             for presentation in session.presentations:
                 for session2 in sessions:
                     if session2 != session:
-                        if sum(p.duration for p in session2.presentations) + presentation.duration <= session2.max_duration:
+                        if sum(p.duration for p in
+                               session2.presentations) + presentation.duration <= session2.max_duration:
                             new_sessions = [s for s in sessions if s != session and s != session2]
                             new_sessions.append(Session(
-                                    name="tmp_session1",
-                                    presentations=list(session2.presentations) + [presentation]
+                                name="tmp_session1",
+                                presentations=list(session2.presentations) + [presentation]
                             ))
                             new_sessions.append(Session(
-                                    name="tmp_session2",
-                                    presentations=[p for p in session.presentations if p != presentation]
+                                name="tmp_session2",
+                                presentations=[p for p in session.presentations if p != presentation]
                             ))
                             new_sessions_str = schedule_to_str(new_sessions)
                             if new_sessions_str not in visited_schedules:
-                                new_score = schedule_score_func(new_sessions, session_score_func, presentation_score_func)
+                                new_score = schedule_score_func(new_sessions, session_score_func,
+                                                                presentation_score_func)
                                 if new_score > current_score:
                                     if best_new_score is None or new_score > best_new_score:
                                         best_new_score = new_score
                                         arg_best_new_score = (session, session2, presentation)
+
         if arg_best_new_score is not None:
             session, session2, presentation = arg_best_new_score
-            session.presentations.remove(presentation)
-            session2.presentations.append(presentation)
+            name_to_session[session.name].presentations.remove(presentation)
+            name_to_session[session2.name].presentations.append(presentation)
             print(f"I'm moving {presentation} from {session} to {session2}")
         else:
             print("No improvement, I'm stopping.")
             break
 
 
-def schedule_to_csv(sessions: Collection[Session], file_path):
+def greedy_schedule(
+        sessions: Collection[Session],
+        presentations: Collection[Presentation],
+        schedule_score_func=schedule_score_additive_leximin,
+        session_score_func=session_score_leximin,
+        presentation_score_func=presentation_score_avg):
+
+    current_pres = set(presentations)
+    while len(current_pres) > 0:
+        best_new_score = None
+        best_new_score_arg = None
+        for presentation in current_pres:
+            for session in sessions:
+                if sum(p.duration for p in session.presentations) + presentation.duration <= session.max_duration:
+                    new_sessions = [s for s in sessions if s != session]
+                    new_sessions.append(Session(name="tmp_Session", presentations=list(session.presentations) + [presentation]))
+                    new_score = schedule_score_func(new_sessions, session_score_func, presentation_score_func)
+                    if best_new_score is None or new_score > best_new_score:
+                        best_new_score = new_score
+                        best_new_score_arg = (presentation, session)
+        p, s = best_new_score_arg
+        s.presentations.append(p)
+        current_pres.remove(p)
+        print(f"Added {p} to {s}, new score: {best_new_score} ({len(current_pres)} to go)")
+
+
+def schedule_to_csv(time_slots: Collection[TimeSlot], file_path):
     with open(file_path, "w", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["timeslot", "session", "submission #", "title"])
 
-        for session in sessions:
-            for presentation in session.presentations:
-                writer.writerow(
-                    [
-                        session.name.split("_")[0],
-                        session.name.split("_")[1],
-                        presentation.name,
-                        presentation.title,
-                    ]
-                )
+        for time_slot in time_slots:
+            for session in time_slot.sessions:
+                for presentation in session.presentations:
+                    writer.writerow(
+                        [
+                            time_slot.name,
+                            session.name,
+                            presentation.name,
+                            presentation.title,
+                        ]
+                    )
 
 
-def compute_paper_score(paper, papers, submission_similarities):
-    res = 0
-    for p in papers:
-        if p != paper:
-            res += submission_similarities[paper][p]
-    return res
-
-
-def compute_session_total_score(papers, submission_similarities):
-    res = 0
-    for i in range(len(papers) - 1):
-        for j in range(i + 1, len(papers)):
-            res += submission_similarities[papers[i]][papers[j]]
-    return res
-
-
-def compute_session_min_score(papers, submission_similarities):
-    return min(compute_paper_score(p, papers, submission_similarities) for p in papers)
-
-
-def schedule_to_html(sessions: Collection[Session], file_path, submission_similarities):
+def schedule_to_html(
+        time_slots: Collection[TimeSlot],
+        file_path: str,
+        schedule_score_func: Callable = schedule_score_additive_leximin,
+        session_score_func: Callable = session_score_leximin,
+        presentation_score_func: Callable = presentation_score_avg
+):
     with open(file_path, "w", encoding="utf-8") as f:
-        schedule_per_slot = {}
-        for session in sessions:
-            if len(session.presentations) > 0:
-                time_slot, session_name = session.name.split("_")
-                if time_slot in schedule_per_slot:
-                    schedule_per_slot[time_slot][session_name] = session.presentations
-                else:
-                    schedule_per_slot[time_slot] = {session_name: session.presentations}
         f.write(
-            """<!DOCTYPE html>
+            f"""<!DOCTYPE html>
 <html lang="en"><head>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <meta charset="UTF-8">
@@ -610,20 +661,24 @@ def schedule_to_html(sessions: Collection[Session], file_path, submission_simila
 </head>
 <body>
 <header><h1>ECAI-2024 — Schedule</h1></header>
-<main>"""
+<main>
+<section><p>
+Global Score: {schedule_score_func([s for t in time_slots for s in t.sessions], session_score_func, presentation_score_func)}
+</p></section>"""
         )
-        for time_slot, schedule in schedule_per_slot.items():
-            f.write(f"<section><div class='section-content'><h2>{time_slot}</h2>")
-            for session, presentations in schedule.items():
+        for time_slot in time_slots:
+            f.write(f"<section><div class='section-content'><h2>{time_slot.name}</h2>")
+            for session in time_slot.sessions:
+                presentations = session.presentations
                 f.write(
-                    f"<h3>Session {session} (s = {compute_session_total_score(presentations, submission_similarities):.3f}, min = {compute_session_min_score(presentations, submission_similarities):.3f})</h3>"
+                    f"<h3>Session {session.name} (score = {session_score_func(presentations, presentation_score_func)})</h3>"
                 )
                 f.write(
                     """<table class="lined-table"><tr><th>Paper</th><th>Score</th></tr>"""
                 )
                 for presentation in presentations:
                     f.write(
-                        f"<tr><td>#{presentation}: {presentation.title}</td><td>{compute_paper_score(presentation, presentations, submission_similarities)}</td></tr>"
+                        f"<tr><td>#{presentation}: {presentation.title}</td><td>{presentation_score_func(presentation, presentations)}</td></tr>"
                     )
                 f.write("</table>")
             f.write("</div></section>")
@@ -656,7 +711,7 @@ def draw_similarities(similarities, num_bins):
     plt.show()
 
 
-if __name__ == "__main__":
+def main():
     csv_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "csv")
 
     committee = read_committee(
@@ -672,13 +727,15 @@ if __name__ == "__main__":
     submissions["avg_total_scores"] = submissions.apply(
         lambda df_row: avg(df_row.get("total_scores", [])), axis=1
     )
-    top_submissions = submissions[submissions["decision"] == "accept"]
+    accepted_submissions = submissions[submissions["decision"] == "accept"]
+    print("=" * 50)
+    print(f"Data loaded: {len(accepted_submissions.index)} submissions")
 
     bid_level_weights = {"yes": 1, "maybe": 0.5}
 
-    bid_sim = bid_similarity(top_submissions, committee, bid_level_weights)
+    bid_sim = bid_similarity(accepted_submissions, committee, bid_level_weights)
     # draw_similarities(bid_sim, 10)
-    topic_sim = topic_similarity(top_submissions)
+    topic_sim = topic_similarity(accepted_submissions)
     # draw_similarities(topic_sim, 10)
     aggregated_similarity = {}
     for sub_id1, similarities in bid_sim.items():
@@ -692,11 +749,14 @@ if __name__ == "__main__":
                     aggregated_similarity[sub_id1][sub_id2] = max(1, int(max(s, s2) * 10))
                 else:
                     aggregated_similarity[sub_id1][sub_id2] = max(1, int(s * s2 * 1000))
-    print(f"Number of 0 similarity: {len([s for d in aggregated_similarity.values() for s in d.values() if s == 0])}")
+
+    print("=" * 50)
+    print("SIMILARITY SCORES")
+    print(f"Number of 0 similarity: {len([s for d in aggregated_similarity.values() for s in d.values() if s == 0])}\n")
     # draw_similarities(aggregated_similarity, 40)
 
     all_presentations = []
-    top_submissions.apply(
+    accepted_submissions.apply(
         lambda df_row: all_presentations.append(
             Presentation(
                 df_row["#"],
@@ -708,6 +768,7 @@ if __name__ == "__main__":
         ),
         axis=1,
     )
+    # all_presentations = all_presentations[:50]
 
     all_time_slots = [
         TimeSlot("Mon-am"),
@@ -723,47 +784,67 @@ if __name__ == "__main__":
         for k in range(1, 11):
             t.sessions.append(Session(f"{t.name}_{k}", min_duration=5, max_duration=10))
 
-    # all_presentations = all_presentations[:100]
-    # all_time_slots = all_time_slots[:1]
+    # schedule = schedule_flow(all_presentations[:8], [s for t in all_time_slots for s in t.sessions][:2])
+    # for session, presentations in schedule.items():
+    #     session.presentations = presentations
+    # print(f"TOTAL: min={schedule_score_min(schedule.keys(), session_score_min, presentation_score_avg)}, total={schedule_score_sum(schedule.keys(), session_score_min, presentation_score_avg)}")
+    # print(f"leximin={schedule_score_leximin(schedule.keys(), session_score_min, presentation_score_avg)}")
+
+    print("\n" + "=" * 50)
+    print("Merge clustering")
     merged_presentations = iterative_merge_clustering(
         all_presentations, 6, n_cluster_ratio_min=0, n_cluster_ratio_max=0.1
     )
+    assert sum(p.duration for p in merged_presentations) == sum(p.duration for p in all_presentations)
+    print(f"Final number of presentations: {len(merged_presentations)}")
     all_presentations = merged_presentations
 
-    # clusters = cluster_presentations(merged_presentations, 10, algorithm="kmeans")
-    # for i, c in enumerate(clusters):
-    #     print(f"Cluster {i}: {sum(p.duration for p in c)} {c}")
+    print("\n" + "=" * 50)
+    print("Cluster in 10")
+    clusters = cluster_presentations(all_presentations, 10, algorithm="kmeans")
+    for i, c in enumerate(clusters):
+        print(f"Cluster {i}: {sum(p.duration for p in c)} {c}")
 
-    schedule = egalitarian_schedule_ilp(all_presentations, [s for t in all_time_slots for s in t.sessions], max_run_time=300, objective=Objectives.MIN_SCORE)
+    print("\n" + "=" * 50)
+    print("MIN_SCORE ILP")
+    schedule = egalitarian_schedule_ilp(all_presentations, [s for t in all_time_slots for s in t.sessions], max_run_time=900, objective=Objectives.MIN_SCORE)
     for session, presentations in schedule.items():
         session.presentations = presentations
-    schedule = egalitarian_schedule_ilp(all_presentations, [s for t in all_time_slots for s in t.sessions], max_run_time=300, objective=Objectives.MIN_THEN_TOTAL_SCORE, initial_solution=True)
+    print("\n" + "=" * 50)
+    print("MIN_THEN_TOTAL_SCORE ILP")
+    schedule = egalitarian_schedule_ilp(all_presentations, [s for t in all_time_slots for s in t.sessions], max_run_time=600, objective=Objectives.MIN_THEN_TOTAL_SCORE, initial_solution=True)
     for session, presentations in schedule.items():
         session.presentations = presentations
-    all_sessions = schedule.keys()
+
+    # all_sessions = [s for t in all_time_slots for s in t.sessions]
+    all_sessions = []
+    for t in all_time_slots:
+        for session in t.sessions:
+            new_presentations = []
+            presentations_to_remove = []
+            for presentation in session.presentations:
+                if presentation.group_of:
+                    new_presentations.extend(presentation.group_of)
+                    presentations_to_remove.append(presentation)
+            session.presentations.extend(new_presentations)
+            for p in presentations_to_remove:
+                session.presentations.remove(p)
+            all_sessions.append(session)
+
+    # print("\n" + "=" * 50)
+    # print("Greedy Schedule")
+    # greedy_schedule(all_sessions, all_presentations)
+
+    print("\n" + "=" * 50)
+    print("Local search")
+    schedule_local_search(all_sessions, schedule_score_func=schedule_score_leximin)
 
     print(f"TOTAL: min={schedule_score_min(all_sessions, session_score_min, presentation_score_avg)}, total={schedule_score_sum(all_sessions, session_score_min, presentation_score_avg)}")
-    print(f"leximin={schedule_score_leximin(all_sessions, session_score_min, presentation_score_avg)}")
+    print(f"leximin={schedule_score_additive_leximin(all_sessions, session_score_min, presentation_score_avg)}")
 
-    for s in all_sessions:
-        new_pres = []
-        remove_pres = []
-        for p in s.presentations:
-            if p.group_of:
-                new_pres.extend(p.group_of)
-                remove_pres.append(p)
-        for p in remove_pres:
-            s.presentations.remove(p)
-        s.presentations.extend(new_pres)
+    schedule_to_csv(all_time_slots, "final_schedule.csv")
+    schedule_to_html(all_time_slots, "final_schedule.html")
 
-    schedule_local_search(all_sessions)
 
-    for s in all_sessions:
-        pres = s.presentations
-        if len(pres) > 0:
-            print(f"{s}: {len(pres)} {pres} min={session_score_min(pres, presentation_score_avg)}, avg={session_score_avg(pres, presentation_score_avg)},  total={session_score_sum(pres, presentation_score_avg)}")
-    print(f"TOTAL: min={schedule_score_min(all_sessions, session_score_min, presentation_score_avg)}, total={schedule_score_sum(all_sessions, session_score_min, presentation_score_avg)}")
-    print(f"leximin={schedule_score_leximin(all_sessions, session_score_min, presentation_score_avg)}")
-
-    schedule_to_csv(all_sessions, "final_schedule.csv")
-    schedule_to_html(all_sessions, "final_schedule.html", aggregated_similarity)
+if __name__ == "__main__":
+    main()
