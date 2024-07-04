@@ -3,8 +3,7 @@ import enum
 import os
 
 import time
-from collections.abc import Collection, Callable, Iterable
-from multiprocessing import Pool
+from collections.abc import Collection, Iterable
 
 import networkx as nx
 import numpy as np
@@ -498,9 +497,11 @@ def sum_aggregator(values):
 
 
 def avg_aggregator(values):
-    if len(values) == 0:
-        return 0
-    return sum(values) / len(values)
+    return avg(values)
+
+
+def best_five_avg_aggregator(values):
+    return avg_aggregator(sorted(values, reverse=True)[:5])
 
 
 def min_aggregator(values):
@@ -549,22 +550,6 @@ def schedule_to_str(sessions: Collection[Session]):
     return res
 
 
-def local_search_reassign_pool_func(args):
-    session, presentation, session2, s_agg, p_agg = args
-    if (
-            sum(p.duration for p in session2.presentations)
-            + presentation.duration
-            <= session2.max_duration
-    ):
-        new_score_s = presentation_collection_score([
-                p
-                for p in session.presentations
-                if p != presentation
-            ], s_agg, p_agg)
-        new_score_s2 = presentation_collection_score(session2.presentations + [presentation], s_agg, p_agg)
-        return presentation, [session, session2], [new_score_s, new_score_s2]
-
-
 def schedule_local_search(
     sessions: Collection[Session],
     schedule_aggregator=leximin_aggregator,
@@ -578,16 +563,43 @@ def schedule_local_search(
         current_schedule_score = schedule_aggregator(current_sessions_scores.values())
         best_new_schedule_score = None
         arg_best_new_score = None
-        with Pool(processes=14) as pool:
-            arguments = ((s, p, s2, session_aggregator, presentation_aggregator) for s in sessions for p in s.presentations for s2 in sessions if s2 != s)
-            for p, sess, scores in pool.imap_unordered(local_search_reassign_pool_func, arguments):
-                new_scores = [score for s, score in current_sessions_scores.items() if s not in sess]
-                new_scores.extend(scores)
-                new_schedule_score = schedule_aggregator(new_scores)
-                if new_schedule_score > current_schedule_score:
-                    if best_new_schedule_score is None or new_schedule_score > best_new_schedule_score:
-                        best_new_schedule_score = new_schedule_score
-                        arg_best_new_score = sess[0], sess[1], p
+        for session in sessions:
+            for session2 in sessions:
+                if session != session2:
+                    for presentation in session.presentations:
+                        if sum(p.duration for p in session2.presentations) + presentation.duration <= session2.max_duration:
+                            if len(session.presentations) == 1:
+                                new_session_score = (0,)
+                            else:
+                                new_session_score = [sum(presentation.pairwise_scores[p2] for p2 in session.presentations if p2 != presentation) / sum(p2.duration for p2 in session.presentations if p2 != presentation)]
+                                for p1 in session.presentations:
+                                    new_session_score.append(
+                                        sum(p1.pairwise_scores[p2] for p2 in session.presentations if p2 != presentation) / sum(
+                                            p2.duration for p2 in
+                                            session.presentations if p2 != presentation))
+                                new_session_score = tuple(sorted(new_session_score))
+
+                            sum_score = sum(presentation.pairwise_scores[p2] for p2 in session2.presentations)
+                            sum_score += presentation.pairwise_scores[presentation]
+                            new_session2_score = [sum_score / (sum(p2.duration for p2 in session2.presentations) + presentation.duration)]
+                            for p1 in session2.presentations:
+                                sum_score = sum(p1.pairwise_scores[p2] for p2 in session2.presentations)
+                                sum_score += p1.pairwise_scores[presentation]
+                                new_session2_score.append(
+                                    sum_score / (sum(p2.duration for p2 in session2.presentations) + presentation.duration)
+                                )
+                            new_session2_score = tuple(sorted(new_session2_score))
+
+                            new_schedule_scores = [score for s, score in current_sessions_scores.items()
+                                                   if s not in [session, session2]]
+                            new_schedule_scores.append(new_session_score)
+                            new_schedule_scores.append(new_session2_score)
+
+                            new_schedule_score = schedule_aggregator(new_schedule_scores)
+                            if new_schedule_score > current_schedule_score:
+                                if best_new_schedule_score is None or new_schedule_score > best_new_schedule_score:
+                                    best_new_schedule_score = new_schedule_score
+                                    arg_best_new_score = session, session2, presentation
         if arg_best_new_score is not None:
             session, session2, presentation = arg_best_new_score
             name_to_session[session.name].presentations.remove(presentation)
@@ -606,11 +618,32 @@ def greedy_schedule(
     presentation_aggregator=avg_aggregator,
 ):
     current_pres = set(presentations)
+    empty_session_names = [s.name for s in sessions]
     while len(current_pres) > 0:
         current_sessions_scores = {s: session_score(s, session_aggregator, presentation_aggregator) for s in sessions}
         best_new_schedule_score = None
         arg_best_new_score = None
+
         for presentation in current_pres:
+            if len(empty_session_names) > 0:
+                # If adding to any session is bad, might as well just open a new session.
+                max_increase = max(
+                    min_aggregator(presentation_collection_score(s.presentations + [presentation],
+                                                  session_aggregator,
+                                                  presentation_aggregator)) - min_aggregator(current_sessions_scores[s])
+                    for s in sessions
+                )
+                if max_increase < 3:
+                    session_name = empty_session_names.pop()
+                    for s in sessions:
+                        if s.name == session_name:
+                            s.presentations.append(presentation)
+                            current_pres.remove(presentation)
+                            print(
+                                f"Opened a new session {s} for {presentation} ({len(current_pres)} to go), new score: {best_new_schedule_score}"
+                            )
+                            break
+                    break
             for session in sessions:
                 if sum(p.duration for p in session.presentations) + presentation.duration <= session.max_duration:
                     new_session_score = [sum(presentation.pairwise_scores[p2] for p2 in session.presentations) / (sum(p2.duration for p2 in session.presentations) + presentation.duration)]
@@ -623,12 +656,13 @@ def greedy_schedule(
                     if best_new_schedule_score is None or new_schedule_score > best_new_schedule_score:
                         best_new_schedule_score = new_schedule_score
                         arg_best_new_score = session, presentation
-        s, p = arg_best_new_score
-        s.presentations.append(p)
-        current_pres.remove(p)
-        print(
-            f"Added {p} to {s} ({len(current_pres)} to go), new score: {best_new_schedule_score}"
-        )
+        if arg_best_new_score is not None:
+            s, p = arg_best_new_score
+            s.presentations.append(p)
+            current_pres.remove(p)
+            print(
+                f"Added {p} to {s} ({len(current_pres)} to go), new score: {best_new_schedule_score}"
+            )
 
 
 def schedule_to_csv(time_slots: Collection[TimeSlot], file_path):
@@ -670,22 +704,34 @@ def schedule_to_html(
 <header><h1>ECAI-2024 — Schedule</h1></header>
 <main>
 <section><p>
-Global Score: {schedule_score_func([s for t in time_slots for s in t.sessions], session_score_func, presentation_score_func)}
-</p></section>"""
+<strong>Global Score</strong>: {schedule_aggregator([session_score(s, session_aggregator, presentation_aggregator) for s in [s for t in time_slots for s in t.sessions]])}</p>
+<p><strong># sessions with min score < 5:</strong> {sum(1 for t in time_slots for s in t.sessions if session_score(s, min_aggregator, presentation_aggregator) < 5)}</strong></p>
+<p><strong># papers with score < 10:</strong> {sum(1 for t in time_slots for s in t.sessions for p in s.presentations if presentation_aggregator([p.pairwise_scores[p2] for p2 in s.presentations]) < 10)}</strong></p>
+<p><strong># papers with score < 5:</strong> {sum(1 for t in time_slots for s in t.sessions for p in s.presentations if presentation_aggregator([p.pairwise_scores[p2] for p2 in s.presentations]) < 5)}</strong></p></section>"""
         )
         for time_slot in time_slots:
             f.write(f"<section><div class='section-content'><h2>{time_slot.name}</h2>")
             for session in time_slot.sessions:
                 presentations = session.presentations
                 f.write(
-                    f"<h3>Session {session.name} (score = {session_score_func(presentations, presentation_score_func)})</h3>"
+                    f"<h3 style='margin-top: 30px'>Session {session.name} (min_score = {session_score(session, min_aggregator, presentation_aggregator)})</h3>"
                 )
                 f.write(
-                    """<table class="lined-table"><tr><th>Paper</th><th>Score</th></tr>"""
+                    f"""<table class="lined-table center-margin"><tr><th>{len(presentations)} Paper{'s' if len(presentations) > 0 else ''}</th><th>Score</th></tr>"""
                 )
-                for presentation in presentations:
+                p_score = [(presentation, presentation_aggregator([presentation.pairwise_scores[p] for p in presentations])) for presentation in presentations]
+                p_score.sort(key=lambda x: x[1], reverse=True)
+                for presentation, score in p_score:
                     f.write(
-                        f"<tr><td>#{presentation}: {presentation.title}</td><td>{presentation_score_func(presentation, presentations)}</td></tr>"
+                        f"<tr><td>#{presentation}: {presentation.title}</td><td>{score}</td></tr><tr style='border-top: none;'><td>"
+                    )
+                    for i, p in enumerate(presentations):
+                        if i == len(presentations) - 1:
+                            f.write(f"{p.name}: {presentation.pairwise_scores[p]}")
+                        else:
+                            f.write(f"{p.name}: {presentation.pairwise_scores[p]} &mdash;")
+                    f.write(
+                        f"</td><td></td></tr>"
                     )
                 f.write("</table>")
             f.write("</div></section>")
@@ -753,13 +799,14 @@ def main():
             if sub_id1 == sub_id2:
                 aggregated_similarity[sub_id1][sub_id2] = 0
             else:
-                s2 = topic_sim[sub_id1][sub_id2]
-                if s * s2 == 0 and s + s2 > 0:
-                    aggregated_similarity[sub_id1][sub_id2] = max(
-                        1, int(max(s, s2) * 10)
-                    )
-                else:
-                    aggregated_similarity[sub_id1][sub_id2] = max(1, int(s * s2 * 1000))
+                aggregated_similarity[sub_id1][sub_id2] = max(1, int(s * 1000))
+                # s2 = topic_sim[sub_id1][sub_id2]
+                # if s * s2 == 0 and s + s2 > 0:
+                #     aggregated_similarity[sub_id1][sub_id2] = max(
+                #         1, int(max(s, s2) * 1000)
+                #     )
+                # else:
+                #     aggregated_similarity[sub_id1][sub_id2] = max(1, int(s * s2 * 10000))
 
     print("=" * 50)
     print("SIMILARITY SCORES")
@@ -862,6 +909,8 @@ def main():
     print("\n" + "=" * 50)
     print("Greedy Schedule")
     greedy_schedule(all_sessions, all_presentations)
+    schedule_to_csv(all_time_slots, "greedy_schedule.csv")
+    schedule_to_html(all_time_slots, "greedy_schedule.html")
 
     print("\n" + "=" * 50)
     print("Local search")
