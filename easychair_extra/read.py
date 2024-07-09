@@ -69,7 +69,7 @@ def read_committee(
                 else:
                     pc_to_topics[member_id] = [topic]
                 area = topics_to_areas[topic]
-                if member_id in pc_to_areas:
+                if member_id in pc_to_areas and area not in pc_to_areas[member_id]:
                     pc_to_areas[member_id].append(area)
                 else:
                     pc_to_areas[member_id] = [area]
@@ -135,7 +135,7 @@ def read_submission(
                     sub_to_topics[sub_id] = [topic]
                 if topics_to_areas:
                     area = topics_to_areas[topic]
-                    if sub_id in sub_to_areas:
+                    if sub_id in sub_to_areas and area not in sub_to_areas[sub_id]:
                         sub_to_areas[sub_id].append(area)
                     else:
                         sub_to_areas[sub_id] = [area]

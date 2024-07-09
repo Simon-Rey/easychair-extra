@@ -1,0 +1,323 @@
+timeslot,session,submission #,title
+Mon-am,Mon-am_1,2307,GraphFSA: A Finite State Automaton Framework for Algorithmic Learning on Graphs
+Mon-am,Mon-am_1,2336,VMFTransformer: An Angle-Preserving and Auto-Scaling Machine for Multi-horizon Probabilistic Forecasting
+Mon-am,Mon-am_1,2275,IndMask: Inductive Explanation for Multivariate Time Series Black-box Models
+Mon-am,Mon-am_1,2003,DeepDFA: Automata Learning through Neural Probabilistic Relaxations
+Mon-am,Mon-am_1,314,TransFeat-TPP: An Interpretable Deep Covariate Temporal Point Processes
+Mon-am,Mon-am_1,2672,A Neural Rewriting System to Solve Algorithmic Problems
+Mon-am,Mon-am_1,1991,DecorTAD: Diffusion Based Conditional Representation Learning for Online Trajectory Anomaly Detection
+Mon-am,Mon-am_1,596,FL-GNN: Efficient Fusion of Fuzzy Neural Network and Graph Neural Network
+Mon-am,Mon-am_1,1574,Embedding Knowledge Graphs in Degenerate Clifford Algebras
+Mon-am,Mon-am_2,993,Dirichlet Logistic Gaussian Processes for Evaluation of Black-Box Stochastic Systems under Complex Requirements
+Mon-am,Mon-am_2,2197,TED: Accelerate Model Training by Internal Generalization
+Mon-am,Mon-am_2,2719,A More Practical Algorithm for Weighted First-Order Model Counting with Linear Order Axiom
+Mon-am,Mon-am_2,2906,Quantifying a Causal Effect from a CPDAG with Targeted Exogenous Causal Knowledge
+Mon-am,Mon-am_2,2909,Unlocking Efficiency: Adaptive Masking for Gene Transformer Models
+Mon-am,Mon-am_2,2850,Contextually Adaptive Algorithms for Gaussian Process Bandit Optimization under Heavy-tailed Noise
+Mon-am,Mon-am_2,1051,Time Series Imputation with Multivariate Radial Basis Function Neural Network
+Mon-am,Mon-am_2,2697,Approximate Estimation of High-dimension Execution Skill for Dynamic Agents in Continuous Domains
+Mon-am,Mon-am_3,1827,Limited Voting for Better Representation?
+Mon-am,Mon-am_3,2320,Complexity Results and Algorithms for Manipulation and Bribery in Judgment Aggregation
+Mon-am,Mon-am_3,629,"Temporal Elections: Welfare, Strategyproofness, and Proportionality"
+Mon-am,Mon-am_3,2248,Abductive and Contrastive Explanations for Scoring Rules in Voting
+Mon-am,Mon-am_3,305,Multiwinner Temporal Voting with Aversion to Change
+Mon-am,Mon-am_3,1869,Control by Adding Players to Change or Maintain the Shapley–Shubik or the Penrose–Banzhaf Power Index in Weighted Voting Games Is Complete for NP^PP
+Mon-am,Mon-am_3,2054,Do we Care about Poll Manipulation in Political Elections?
+Mon-am,Mon-am_3,1149,The Complexity of Manipulation of k-Coalitional Games on Graphs
+Mon-am,Mon-am_3,2268,Existence of MMS Allocations of Mixed Manna
+Mon-am,Mon-am_3,2565,The Degree of Fairness in Efficient House Allocation
+Mon-am,Mon-am_4,849,Characterising Serialisation Equivalence for Abstract Argumentation
+Mon-am,Mon-am_4,109,Rejection in Abstract Argumentation: Harder Than Acceptance?
+Mon-am,Mon-am_4,472,Post-hoc Explanation of Extension Semantics
+Mon-am,Mon-am_4,763,Interpretable image classification through an argumentative dialog between encoders
+Mon-am,Mon-am_4,2539,EthiX: A Dataset for Argument Scheme Classification in Ethical Debates
+Mon-am,Mon-am_4,1855,Revisiting Vacuous Reduct Semantics for Abstract Argumentation
+Mon-am,Mon-am_4,1488,Learning Brave Assumption-Based Argumentation Frameworks via ASP
+Mon-am,Mon-am_4,1428,Compromises in Dialogical Argumentation: Aggregated Policies for Biparty Decision Theory
+Mon-am,Mon-am_5,1985,Offline Model-Based Reinforcement Learning with Anti-Exploration
+Mon-am,Mon-am_5,719,Enhancing Reinforcement Learning Through Guided Search
+Mon-am,Mon-am_5,698,"Mind the Model, Not the Agent: The Primacy Bias in Model-based RL"
+Mon-am,Mon-am_5,669,A Multi-Agent Reinforcement Learning Algorithm Embedded with Opponent Modeling
+Mon-am,Mon-am_5,1366,Learning Reward Structure with Subtasks in Reinforcement Learning
+Mon-am,Mon-am_5,1172,Exploiting Hierarchical Symmetry in Multi-Agent Reinforcement Learning
+Mon-am,Mon-am_5,1405,SelfBC: Self Behavior Cloning for Offline Reinforcement Learning
+Mon-am,Mon-am_6,1253,Count-based Novelty Exploration in Classical Planning
+Mon-am,Mon-am_6,552,NeSIG: A Neuro-Symbolic Method for Learning to Generate Planning Problems
+Mon-am,Mon-am_6,424,Decision-Focused Learning to Predict Action Costs for Planning
+Mon-am,Mon-am_6,1554,Scale-Adaptive Balancing of Exploration and Exploitation in Classical Planning
+Mon-am,Mon-am_6,1484,Barely Decidable Fragments of Planning
+Mon-am,Mon-am_6,918,Learning Interpretable Classifiers for PDDL Planning
+Mon-am,Mon-am_6,2052,Gotta Catch 'Em All! Sequence Flaws in CEGAR for Classical Planning
+Mon-am,Mon-am_6,565,Iterative Oversubscription Planning with Goal-Conflict Explanations: Scaling Up Through Policy-Guidance Approximation
+Mon-am,Mon-am_7,1445,Hop-based Heterogeneous Graph Transformer
+Mon-am,Mon-am_7,1632,Every Node Counts: Improving the Training of Graph Neural Networks on Node Classification
+Mon-am,Mon-am_7,1346,Link prediction without learning
+Mon-am,Mon-am_7,1069,"Graph Classification with GNNs : Optimisation, Representation and Inductive Bias"
+Mon-am,Mon-am_7,2424,Learning a Mini-batch Graph Transformer via Two-stage Interaction Augmentation
+Mon-am,Mon-am_7,368,Resilient Graph Neural Networks: A Coupled Dynamical Systems Approach
+Mon-am,Mon-am_7,2149,Laner-GNN: Adapting to Long-Tail Degree Distribution with Latent Neighborhood Restorers
+Mon-am,Mon-am_7,234,Enhancing Node Representations for Real-World Complex Networks with Topological Augmentation
+Mon-am,Mon-am_8,1717,Grouped Logit Distillation Enhanced with Superclass Awareness for Efficient Knowledge Transfer
+Mon-am,Mon-am_8,1058,Mutual Local Consistency Learning for Face Forgery Detection
+Mon-am,Mon-am_8,871,Cross-stage Transfer in Multi-stage Cascade Ranking and Filtering Systems
+Mon-am,Mon-am_8,1860,Efficient Initial Data Selection and Labeling for Multi-Class Classification Using Topological Analysis
+Mon-am,Mon-am_8,699,MAMO:Deep Multi-task Architecture Learning via Multi-objective Optimization with Gradients Mediative Kernel
+Mon-am,Mon-am_8,495,JOSAL: Joint Learning Framework for Open-Set Active Learning
+Mon-am,Mon-am_8,641,CLCE: An Approach to Refining Cross-Entropy and Contrastive Learning for Optimized Learning Fusion
+Mon-am,Mon-am_8,2804,Mixup Your Own Latent: Efficient and Robust Self-Supervised Learning on Small Images
+Mon-am,Mon-am_9,1806,Estimating the Robustness Radius for Randomized Smoothing with 100x Sample Efficiency
+Mon-am,Mon-am_9,2310,Development of an Interpretable Uni-Null Neuron-Based Evolving Fuzzy Neural Network for Age Group Identification in Respondents with Diabetes
+Mon-am,Mon-am_9,2402,RETRO-LI: Small-Scale Retrieval Augmented Generation Supporting Noisy Similarity Searches and Domain Shift Generalization
+Mon-am,Mon-am_9,2901,CAGDR: Confidence-based Acceleration of Generative Document Retrieval
+Mon-am,Mon-am_9,2121,Mask-Encoded Sparsification: Mitigating Biased Gradients in Communication-Efficient Split Learning
+Mon-am,Mon-am_9,543,LightFF: Lightweight Inference for Forward-Forward Algorithm
+Mon-am,Mon-am_9,1809,A First-Order Multi-Gradient Algorithm for Multi-Objective Bi-Level Optimization
+Mon-pm,Mon-pm_1,1421,Multi-Agent Path Finding with Real Robot Dynamics and Interdependent Tasks for Automated Warehouses
+Mon-pm,Mon-pm_1,2613,Reaching New Heights in Multi-Agent Collective Construction
+Mon-pm,Mon-pm_1,2316,Real-time goal recognition using approximations in Euclidean space
+Mon-pm,Mon-pm_1,884,An Efficient Modular Algorithm for Connected Multi-Agent Path Finding
+Mon-pm,Mon-pm_1,1338,United We Stand: Decentralized Multi-Agent Planning With Attrition
+Mon-pm,Mon-pm_1,2337,Multi-agent Planning using Visual Language Models
+Mon-pm,Mon-pm_1,2298,Multi-Agent Path Finding with Task Assignment and Supporting Constraints
+Mon-pm,Mon-pm_1,2580,Decentralized Unlabeled Multi-agent Pathfinding Via Target And Priority Swapping
+Mon-pm,Mon-pm_2,1867,Scalable Variational Causal Discovery Unconstrained by Acyclicity
+Mon-pm,Mon-pm_2,2479,Discovering Bayesian Networks when Few Variables Matter
+Mon-pm,Mon-pm_2,1635,Causal Diffusion Autoencoders: Toward Counterfactual Generation via Diffusion Probabilistic Models
+Mon-pm,Mon-pm_2,1854,Enabling Causal Discovery in Post-Nonlinear Models with Normalizing Flows
+Mon-pm,Mon-pm_2,2407,High-Dimensional Causal Bayesian Optimization
+Mon-pm,Mon-pm_2,500,A Full DAG Score-Based Algorithm for Learning Causal Bayesian Networks with Latent Confounders
+Mon-pm,Mon-pm_2,2683,Revisiting the Dataset Bias Problem from a Statistical Perspective
+Mon-pm,Mon-pm_2,1646,Estimating Causal Effects from Learned Causal Networks
+Mon-pm,Mon-pm_3,2856,No Transaction Fees? No Problem! Achieving Fairness in Transaction Fee Mechanism Design
+Mon-pm,Mon-pm_3,330,Meta-mechanisms for Combinatorial Auctions over Social Networks
+Mon-pm,Mon-pm_3,1687,Optimal Diffusion Auctions
+Mon-pm,Mon-pm_3,1407,Accelerating Machine Learning for Trading Using Programmable Switches
+Mon-pm,Mon-pm_3,331,Balancing Efficiency with Equality: Auction Design with Group Fairness Concerns
+Mon-pm,Mon-pm_3,1203,Reducing Systemic Risk in Financial Networks through Donations
+Mon-pm,Mon-pm_3,1201,Selfishly Cancelling Debts Can Reduce Systemic Risk
+Mon-pm,Mon-pm_3,379,Escape Sensing Games: Detection-vs-Evasion in Security Applications
+Mon-pm,Mon-pm_4,2396,Unveiling Learner Dynamics: The ECLIPSE Dataset and NeuralGaze Framework for Prolonged Engagement Assessment in Online Learning
+Mon-pm,Mon-pm_4,1546,Sparse Convolutional Neural Network for Localization and Orientation Prediction and Application to Drone Control
+Mon-pm,Mon-pm_4,1911,Boundary-Enhanced Instance Segmentation
+Mon-pm,Mon-pm_4,843,First Creating Backgrounds Then Rendering Texts: A New Paradigm for Visual Text Blending
+Mon-pm,Mon-pm_4,508,Complex-Valued Gabor-Attention Residual Fusion Network for Iris Recognition
+Mon-pm,Mon-pm_4,1376,Crafting Lifelike Avatars: Model Compression and Advanced Rendering Techniques
+Mon-pm,Mon-pm_4,651,MultiCounter: Multiple Action Agnostic Repetition Counting in Untrimmed Videos
+Mon-pm,Mon-pm_4,1706,High-Quality Human Motion Prediction using Size Invariant Motion Space
+Mon-pm,Mon-pm_5,968,A Neuro-symbolic Approach for Faceted Search in Digital Libraries
+Mon-pm,Mon-pm_5,1206,Planning with OWL-DL Ontologies
+Mon-pm,Mon-pm_5,586,Bridging the Gap: Generating a Comprehensive Biomedical Knowledge Graph Question Answering Dataset
+Mon-pm,Mon-pm_5,2162,Complex multi-ontology alignment through geometric operations on language embeddings
+Mon-pm,Mon-pm_5,2624,Ontology Text Alignment: Aligning Textual Content with Domain Terminology
+Mon-pm,Mon-pm_5,2036,Generating SROI− Ontologies via Knowledge Graph Query Embedding Learning
+Mon-pm,Mon-pm_6,1372,Mitigating Bias: Model Pruning for Enhanced Model Fairness and Efficiency
+Mon-pm,Mon-pm_6,497,Individual Fairness with Group Constraints in Graph Neural Networks
+Mon-pm,Mon-pm_6,2648,Temporal Fairness in Decision Making Problems
+Mon-pm,Mon-pm_6,255,Enhancing Fairness through Reweighting: A Path to Attain the Sufficiency Rule
+Mon-pm,Mon-pm_6,945,Group Fairness with Individual and Censorship Constraints
+Mon-pm,Mon-pm_6,352,``Hard to Explain'': On the Hardness of Socially Aligned Model Interpretation
+Mon-pm,Mon-pm_6,2213,On the Computation of Contrastive Explanations for Boosted Regression Trees
+Mon-pm,Mon-pm_6,1369,Understanding XAI Through the Philosopher's Lens: A Historical Perspective
+Mon-pm,Mon-pm_6,361,Aligning XAI Algorithms with European Regulations: a Case Study in Smart Biomedical Devices
+Mon-pm,Mon-pm_6,496,Towards the New XAI: A Hypothesis-Driven Approach to Decision Support Using Evidence
+Mon-pm,Mon-pm_7,748,Relation Time-aware Heterogeneous Dynamic Graph Neural Networks
+Mon-pm,Mon-pm_7,403,DrDiff: Drug Response Prediction Through  Controllable Diffusion-GE and Graph Attention Network
+Mon-pm,Mon-pm_7,853,Talos: A More Effective and Efficient Adversarial Defense for GNN Models Based on the Global Homogeneity of Graphs
+Mon-pm,Mon-pm_7,372,Fully Hyperbolic Rotation for Knowledge Graph Embedding
+Mon-pm,Mon-pm_7,2693,Deep Generative Models for Subgraph Prediction
+Mon-pm,Mon-pm_7,2477,IFH: a Diffusion Framework for Flexible Design of Graph Generative Models
+Mon-pm,Mon-pm_7,485,Global Structural-Temporal Graph Network with Public Opinion for Online Rumor Detection
+Mon-pm,Mon-pm_7,346,Molecular Topological Profile (MOLTOP) - Simple and Strong Baseline for Molecular Graph Classification
+Mon-pm,Mon-pm_7,2329,SaGess: A Sampling Graph Denoising Diffusion Model for Scalable Graph Generation
+Mon-pm,Mon-pm_8,704,Omniclip: Adapting CLIP for Video Recognition with Spatial-Temporal Omni-Scale Feature Learning
+Mon-pm,Mon-pm_8,2415,CLIP-based Cross-Level Semantic Interaction and Recombination Network for Composed Image Retrieval
+Mon-pm,Mon-pm_8,2266,Prompt-based Domain Incremental Learning with Modular Classification Layer
+Mon-pm,Mon-pm_8,1296,MFF-YOLO: Multi-scale Feature Fusion Network for Small Ship Detection in Night Scenes
+Mon-pm,Mon-pm_8,834,PromptCD: Coupled and Decoupled Prompt Learning for Vision-Language Models
+Mon-pm,Mon-pm_8,1131,TDCL: Dense Semantic Contrastive Learning for Vision-Language Tracking
+Mon-pm,Mon-pm_9,1102,FedSeProto: Learning Semantic Prototype in Federated Learning
+Mon-pm,Mon-pm_9,1591,FilFL: Client Filtering for Optimized Client Participation in Federated Learning
+Mon-pm,Mon-pm_9,2590,FedStale: leveraging stale updates in federated learning
+Mon-pm,Mon-pm_9,2203,Federated Learning with Hybrid Knowledge Distillations on Long-Tailed Heterogeneous Client Data
+Mon-pm,Mon-pm_9,1618,Coopetition in Heterogeneous Cross-Silo Federated Learning
+Mon-pm,Mon-pm_9,944,FedMTL: Privacy-Preserving Federated Multi-Task Learning
+Mon-pm,Mon-pm_9,1021,Federation-Paced Learning: Towards Efficient Federated Learning with Synchronized Pace
+Mon-pm,Mon-pm_9,911,Anti-Matthew FL: Bridging the Performance Gap in Federated Learning to Counteract the Matthew Effect
+Tue-am,Tue-am_1,863,Learning Order Forest for Qualitative-Attribute Data Clustering
+Tue-am,Tue-am_1,2610,NeurCAM: Interpretable Neural Clustering via Additive Models
+Tue-am,Tue-am_1,2452,Subsystem Discovery in High-Dimensional Time-Series Using Masked Autoencoders
+Tue-am,Tue-am_1,765,Capacitated Online Clustering Algorithm
+Tue-am,Tue-am_1,441,On the Discovery of Conceptual Clustering Models through Pattern Mining
+Tue-am,Tue-am_1,2626,HBIC: A Biclustering Algorithm for Heterogeneous Datasets
+Tue-am,Tue-am_3,103,TOPFORMER: Topology-Aware Authorship Attribution of Deepfake Texts with Diverse Writing Styles
+Tue-am,Tue-am_3,2374,Diversifying the Mixture-of-Experts Representation for Language Models with Orthogonal Optimizer
+Tue-am,Tue-am_3,927,Generative LLMs for Multilingual Temporal Expression Normalization
+Tue-am,Tue-am_3,2915,Exploring Large Language Models Text Style Transfer Capabilities
+Tue-am,Tue-am_3,2026,Iteratively Calibrating Prompts for Unsupervised Diverse Opinion Summarization
+Tue-am,Tue-am_3,2169,Diversity-enhanced Learning for Unsupervised Syntactically Controlled Paraphrase Generation
+Tue-am,Tue-am_6,355,Video2Reward: Generating Reward Function from Videos for Legged Robot Behavior Learning
+Tue-am,Tue-am_6,597,Learning Uncertainty Tubes via Recurrent Neural Networks for Planning Robust Robot Motions
+Tue-am,Tue-am_6,816,Optimizing Multi-Robot Task Allocation in Dynamic Environments via Heuristic-Guided Reinforcement Learning
+Tue-am,Tue-am_6,531,A Meta-Engine Framework for Interleaved Task and Motion Planning using Topological Refinements
+Tue-am,Tue-am_6,134,Towards Human-like Trajectory Prediction	for Autonomous Driving: A  Cognitive-inspired Lightweight Model
+Tue-am,Tue-am_6,2370,Placement Aware Grasp Planning for Efficient Sequential Manipulation
+Tue-am,Tue-am_6,2487,An Empirical Study of Grounding PPDDL plans for AI-Driven Robots in Social Environment
+Tue-am,Tue-am_6,2252,Planning for Human-Robot Collaboration Scenarios with Heterogeneous Costs and Durations
+Tue-am,Tue-am_7,1547,Transfer Learning Can Introduce Bias
+Tue-am,Tue-am_7,2124,Understanding the Impact of Human Oversight on Discriminatory Outcomes in AI-Supported Decision Making
+Tue-am,Tue-am_7,470,A Comprehensive Sustainable Framework for Machine Learning and Artificial Intelligence
+Tue-am,Tue-am_7,906,(Un)certainty of (Un)fairness: Preference-Based Selection of Certainly Fair Decision-Makers
+Tue-am,Tue-am_7,1420,Fair-OBNC: Correcting Label Noise for Fairer Datasets
+Tue-am,Tue-am_7,1265,FairUS - UpSampling Optimized Method for Boosting Fairness
+Tue-am,Tue-am_7,484,Making Fair Classification via Correlation Alignment
+Tue-pm,Tue-pm_4,1584,Worst- and Average-Case Robustness of Stable Matchings: (Counting) Complexity and Experiments
+Tue-pm,Tue-pm_4,1227,Parameterized Algorithms for Optimal Refugee Resettlement
+Tue-pm,Tue-pm_4,867,On Connected Strongly-Proportional Cake-Cutting
+Tue-pm,Tue-pm_4,2013,Approximate Mechanism Design for Facility Location with Multiple Objectives
+Tue-pm,Tue-pm_5,1581,A Federated Large Language Model for Long-Term Time Series Forecasting
+Tue-pm,Tue-pm_5,782,Tackling Selfish Clients in Federated Learning
+Tue-pm,Tue-pm_5,428,"PUFFLE: Balancing Privacy, Utility, and Fairness in Federated Learning"
+Tue-pm,Tue-pm_5,1134,A Data-Driven Defense against Edge-case Model Poisoning Attacks on Federated Learning
+Tue-pm,Tue-pm_5,571,Sentinel: An Aggregation Function to Secure Decentralized Federated Learning
+Tue-pm,Tue-pm_5,1079,FedReMa: Improving Personalized Federated Learning via Leveraging the Most Relevant Clients
+Tue-pm,Tue-pm_5,1464,"TrustFed: Navigating Trade-offs Between Performance, Fairness, and Privacy in Federated Learning"
+Wed-am,Wed-am_2,414,Maximally Permissive Reward Machines
+Wed-am,Wed-am_2,468,Survival of the Fittest: Evolutionary Adaptation of Policies for Environmental Shifts
+Wed-am,Wed-am_2,2123,A Meta-Learning Approach for Multi-Objective Reinforcement Learning in Sustainable Home Energy Management
+Wed-am,Wed-am_2,642,Evolutionary Reinforcement Learning via Cooperative Coevolution
+Wed-am,Wed-am_3,348,VANER: Leveraging Large Language Model for Versatile and Adaptive Biomedical Entity Recognition
+Wed-am,Wed-am_3,2563,Domain-specific long text classification from sparse relevant information
+Wed-am,Wed-am_3,445,TabMedBERT: a Tabular Knowledge Enhanced Biomedical Pretrained  Language Model
+Wed-am,Wed-am_3,159,Empowering Biomedical Named Entity Recognition through Multi-Tagger Collaboration
+Wed-am,Wed-am_3,1892,Multi-View Prompt for Fine-Grained Multimodal NER and Grounding
+Wed-am,Wed-am_5,335,SaccadeMOT: Enhancing Object Detection and Tracking in Gigapixel Images via Scale-Aware Density Estimation
+Wed-am,Wed-am_5,722,Open-GMOT: Open-Vocabulary Generic Multiple Object Tracking with Motion-Appearance Cost (MAC) SORT
+Wed-am,Wed-am_5,457,Semantic-level augmented unsupervised representation action learning based on motion manifold
+Wed-am,Wed-am_5,1329,Unidirectional Cross-modal Fusion for RGB-T Tracking
+Wed-am,Wed-am_5,2106,MC-SORT: A Motion Correction-based Framework for Long-Term Multiple Object Tracking
+Wed-am,Wed-am_6,458,Multi-Agent Reinforcement Learning for Alternating-Time Logic
+Wed-am,Wed-am_6,1284,Shielded FOND: Planning With Safety Constraints in Pure-Past Linear Temporal Logic
+Wed-am,Wed-am_6,2843,A Logic for Policy Based Resource Exchanges in Multiagent Systems
+Wed-am,Wed-am_6,2387,A Practical Operational Semantics for Classical Planning in BDI Agents
+Wed-am,Wed-am_6,1981,Synthesis of Reward Machines for Multi-Agent Equilibrium Design
+Wed-am,Wed-am_8,1344,Combining Active Learning and Learning to Reject for Anomaly Detection
+Wed-am,Wed-am_8,1980,Augmented prediction of a true class for Positive Unlabeled data under selection bias
+Wed-am,Wed-am_8,1138,Partial Label Learning via Cost-Guided Retraining
+Wed-am,Wed-am_8,946,Open-Set Multivariate Time-Series Anomaly Detection
+Wed-am,Wed-am_8,268,"Improving Calibration by Relating Focal Loss, Temperature Scaling, and Properness"
+Wed-am,Wed-am_8,252,Cautious Calibration in Binary Classification
+Wed-am,Wed-am_9,567,Pixel-wise Reclassification with Prototypes for Enhancing Weakly Supervised Semantic Segmentation
+Wed-am,Wed-am_9,513,Segmentation-Driven Image Enhancement Based on Deep Reinforcement Learning
+Wed-am,Wed-am_9,739,Modality-Aware and Shift Mixer for Multi-modal Brain Tumor Segmentation
+Wed-am,Wed-am_9,856,Domain Generalised Cell Nuclei Segmentation in Histopathology Images Using Domain-aware Curriculum Learning and Colour-Perceived Meta Learning
+Wed-am,Wed-am_9,1023,LGAD: Local and Global Attention Distillation for Efficient Semantic Segmentation
+Wed-am,Wed-am_9,351,CPNet: 3D Semantic Relation and Geometry Context Prior Network for Multi-organ Segmentation
+Wed-am,Wed-am_9,892,Decoupled Competitive Framework for Semi-supervised Medical Image Segmentation
+Wed-am,Wed-am_9,836,Dual Attention Encoder with Joint Preservation for Medical Image Segmentation
+Wed-pm,Wed-pm_1,1078,Exemplar-Free Incremental Deepfake Detection
+Wed-pm,Wed-pm_1,957,TwinDiffusion: Enhancing Coherence and Efficiency in Panoramic Image Generation with Diffusion Models
+Wed-pm,Wed-pm_1,1086,Context Enhancement with Reconstruction as Sequence for Unified Unsupervised Anomaly Detection
+Wed-pm,Wed-pm_1,1101,EdgeNAT: Transformer for Efficient Edge Detection
+Wed-pm,Wed-pm_1,526,Convolutional Bypasses Are Better Vision Transformer Adapters
+Wed-pm,Wed-pm_1,928,Sinogram-Image Dual-Domain Network for Robust Metal Artifact Reduction in CT Image
+Wed-pm,Wed-pm_1,360,Task-Aware Dynamic Transformer for Efficient Arbitrary-Scale Image Super-Resolution
+Wed-pm,Wed-pm_1,1718,All-Round CAM: Explicit-Implicit Feature Contrast for Weakly Supervised Object Localization
+Wed-pm,Wed-pm_3,2286,Unified Video and Image Representation for Boosted Video Face Forgery Detection
+Wed-pm,Wed-pm_3,700,Generalized Face Anti-spoofing via Finer Domain Partition and Disentangling Liveness-irrelevant Factors
+Wed-pm,Wed-pm_3,1311,SFDFusion: An Efficient Spatial-Frequency Domain Fusion Network For Infrared and Visible Image Fusion
+Wed-pm,Wed-pm_3,673,MakeupAttack: Feature Space Black-box Backdoor Attack on Face Recognition via Makeup Transfer
+Wed-pm,Wed-pm_3,634,GRIF-DM: Generation of Rich Impression Fonts using Diffusion Models
+Wed-pm,Wed-pm_3,1684,MEFusion: Unsupervised Mutual Enhancement for Multimodal Image Fusion
+Wed-pm,Wed-pm_4,985,MLGAT: Multi-Scale Line Graph Attention Network for Emotion Recognition in Conversation
+Wed-pm,Wed-pm_4,1839,Model Priming with Triplet Loss for Few-Shot Emotion Classification in Text
+Wed-pm,Wed-pm_4,432,Interpretation of the Intent Detection Problem as Dynamics in a Low-dimensional Space
+Wed-pm,Wed-pm_4,695,Enhancing Discourse Coherence to Improve Cross-Document Event Coreference Resolution
+Wed-pm,Wed-pm_4,2198,Improving Aspect-Based Sentiment Analysis via Tuple-Order Learning
+Wed-pm,Wed-pm_4,1303,Audience Persona Knowledge-Aligned Prompt Tuning Method for Online Debate
+Wed-pm,Wed-pm_4,1732,Differentiating Choices via Commonality for Multiple-Choice Question Answering
+Wed-pm,Wed-pm_6,1904,On explaining with attention matrices
+Wed-pm,Wed-pm_6,2508,Explaining a probabilistic prediction on the simplex with Shapley compositions
+Wed-pm,Wed-pm_6,2088,Explaining an Agent’s Future Beliefs through Temporally Decomposing Future Reward Estimators
+Wed-pm,Wed-pm_6,2069,Rigorous Probabilistic Guarantees for Robust Counterfactual Explanations
+Wed-pm,Wed-pm_6,848,Empirical Evaluation of Concept Probing for Game-Playing Agents
+Wed-pm,Wed-pm_6,248,Backward explanations via redefinition of predicates
+Wed-pm,Wed-pm_6,31,Axiomatic Analysis of Sample-based Explanations
+Wed-pm,Wed-pm_6,2239,Hyperparameter Importance Analysis for Multi-Objective AutoML
+Wed-pm,Wed-pm_6,1214,Probabilistically Plausible Counterfactual Explanations with Normalizing Flows
+Wed-pm,Wed-pm_6,2867,Measuring User Understanding in Dialogue-based XAI Systems
+Wed-pm,Wed-pm_7,98,Detect Closer Surfaces that can be Seen: New Modeling and Evaluation in Cross-domain 3D Object Detection
+Wed-pm,Wed-pm_7,215,TEOcc: Radar-camera Multi-modal Occupancy Prediction via Temporal Enhancement
+Wed-pm,Wed-pm_7,640,MIM-HD: Making Smaller Masked Autoencoder  Better with  Efficient Distillation
+Wed-pm,Wed-pm_7,1486,HyenaPixel: Global Image Context with Convolutions
+Wed-pm,Wed-pm_7,2932,Dynamic Multimodal Prompt Tuning: Boost Few-shot Learning with VLM-Guided Point Cloud Models
+Wed-pm,Wed-pm_7,764,CBM: Curriculum by Masking
+Wed-pm,Wed-pm_7,1649,CorrAdaptor: Adaptive Local Context Learning for Correspondence Pruning
+Wed-pm,Wed-pm_8,1562,Cost Partitioning For Multiple Sequence Alignment
+Wed-pm,Wed-pm_8,2222,Uncertainty in real-world vehicle routing
+Wed-pm,Wed-pm_8,1331,On Parallel External-Memory Bidirectional Search
+Wed-pm,Wed-pm_8,749,Towards A Faster Branching Algorithm for the Maximum $k$-Defective Clique Problem
+Wed-pm,Wed-pm_8,2597,Evolving A∗ to Efficiently Solve the k Shortest-Path Problem
+Wed-pm,Wed-pm_8,2093,A Heuristic for Optimal Total-Order HTN Planning Based on Integer Linear Programming
+Wed-pm,Wed-pm_8,328,Planning with Logical Graph-based Language Model for Instruction Generation
+Wed-pm,Wed-pm_8,648,DiverTEAM: An Effective Evolutionary Algorithm for Diversified Top-k (Weight) Clique Search Problems
+Wed-pm,Wed-pm_9,1225,Real-Time Indoor Object Detection based on hybrid CNN-Transformer Approach
+Wed-pm,Wed-pm_9,2044,Night-to-Day: Unpaired Image-to-Image Translation for Nighttime Pedestrian Detection
+Wed-pm,Wed-pm_9,903,Adversarial Erasing Transformer for Weakly Supervised Semantic Segmentation
+Wed-pm,Wed-pm_9,283,SinLane: Siamese Visual Transformer via Pyramid Feature Integration for Lane Detection
+Wed-pm,Wed-pm_9,534,BOB-YOLO: Balancing Optimization Binarized YOLO via Module-Wise Latency
+Wed-pm,Wed-pm_9,2894,Few-Shot Object Detection with Instance Feature Generation and Hybrid Contrastive Learning
+Wed-pm,Wed-pm_9,69,I-adapt: Using IoU Adapter to improve pseudo labels in cross-domain object detection
+Thu-am,Thu-am_1,1685,CODD: A Decision Diagram-based Solver for Combinatorial Optimization
+Thu-am,Thu-am_1,1160,SibylSat: Using SAT as an oracle to perform a greedy search on TOHTN Planning
+Thu-am,Thu-am_1,2025,SAT-Based Approaches to Reasoning in Choice Logics
+Thu-am,Thu-am_1,1913,Symmetry-Breaking Constraints for Directed Graphs
+Thu-am,Thu-am_1,2238,Canonical Decision Diagrams Modulo Theories
+Thu-am,Thu-am_1,2421,Machine Learning for Quantifier Selection in cvc5
+Thu-am,Thu-am_1,1245,Using Backdoors to Generate Learnt Information in SAT Solving
+Thu-am,Thu-am_1,1535,Learning Backdoors for Mixed Integer Linear Programs with Contrastive Learning
+Thu-am,Thu-am_2,623,Hierarchical Planning for Resource-Constrained Long-Term Monitoring Missions in Time-Varying Environments
+Thu-am,Thu-am_2,702,Heuristics for Partially Observable Stochastic Contingent Planning
+Thu-am,Thu-am_2,992,Finding Optimal Deterministic Policies for Constrained Stochastic Shortest Path Problems
+Thu-am,Thu-am_2,54,Covered for Life: Lifelong Area Coverage under Spatiotemporal Uncertainty
+Thu-am,Thu-am_2,1247,Structure and Reduction of MCTS for Explainable-AI
+Thu-am,Thu-am_2,831,Merge-and-Shrink Heuristics for SSPs with Prune Transformations
+Thu-am,Thu-am_2,2075,Hierarchical Average-Reward Linearly-solvable Markov Decision Processes
+Thu-am,Thu-am_2,2389,Monte Carlo tree search with state merging for reinforcement learning in Regular Decision Processes
+Thu-am,Thu-am_3,1452,Modelling Diffusion of Dependent and Conflicting Behaviours with Dynamic Logic
+Thu-am,Thu-am_3,616,Computational Complexity of Standpoint LTL
+Thu-am,Thu-am_3,1256,A Unified Automata-Theoretic Approach to LTL_f Modulo Theories
+Thu-am,Thu-am_3,936,Belief Erasure in Propositional Logic
+Thu-am,Thu-am_3,2020,Dealing with inconsistency by syntactic compartmentalization
+Thu-am,Thu-am_3,1328,A novel view of analogical proportion between formulas
+Thu-am,Thu-am_4,2311,Automated Synthesis of Certified Neural Networks
+Thu-am,Thu-am_4,1593,Differentiable Logic Programming for Distant Supervision
+Thu-am,Thu-am_4,2064,Learning logic programs by finding minimal unsatisfiable subprograms
+Thu-am,Thu-am_4,2490,stl2vec: Semantic and Interpretable Vector Representation of Temporal Logic
+Thu-am,Thu-am_4,2686,"Learning Compositional, Time-Varying Neural Barrier Contracts"
+Thu-am,Thu-am_4,2315,"EXPLAIN, AGREE, LEARN: Scaling Learning for Neural Probabilistic Logic"
+Thu-am,Thu-am_4,2485,LTL is Enough: a Neuro-Symbolic Self-Groundable Reward Machine
+Thu-am,Thu-am_4,1852,"Reduce, Reuse, Recycle: Categories for Compositional Reinforcement Learning"
+Thu-am,Thu-am_6,2210,ALOE: Boosting Large Language Model Fine-Tuning with Aggressive Loss-based Elimination of Samples
+Thu-am,Thu-am_6,295,RADAr: A Transformer-based Autoregressive Decoder Architecture for Hierarchical Text Classification
+Thu-am,Thu-am_6,452,SAIE Framework: Support Alone Isn't Enough - Advancing LLM Training with Adversarial Remarks
+Thu-am,Thu-am_6,2887,Is Contrasting All You Need? Contrastive Learning for the Detection and Attribution of AI-generated Text
+Thu-am,Thu-am_6,209,SUBLLM: A Novel Efficient Architecture with Token Sequence Subsampling for LLM
+Thu-am,Thu-am_6,1722,Large Language Model Prompting With Episodic Memory
+Thu-am,Thu-am_6,915,CLLMFS: A Contrastive Learning enhanced Large Language Model Framework for Few-Shot Named Entity Recognition
+Thu-am,Thu-am_6,1229,Tailored-LLaMA: Optimizing Few-Shot Learning in Pruned LLAMA Models with Task-Specific Prompts
+Thu-am,Thu-am_7,2390,FltLM: An Intergrated Long-Context Large Language Model for Effective Context Filtering and Understanding
+Thu-am,Thu-am_7,1417,Enhancing Text-to-SQL Capabilities of Large Language Models via Domain Database Knowledge Injection
+Thu-am,Thu-am_7,1566,Language Task Difficulty Prediction through LLM-Annotated Meta-Features
+Thu-am,Thu-am_7,1627,ANSPRE: Improving Question-Answering in Large Language Models with Answer-Prefix Generation
+Thu-am,Thu-am_7,1974,Prompt based Data Augmentation using Contrastive Learning under low resource scenario
+Thu-am,Thu-am_7,1418,R4: Reinforced Retriever-Reorder-Responder for Retrieval-Augmented Large Language Models
+Thu-am,Thu-am_7,1304,Enhancing Retrieval and Managing Retrieval: A Four-Module Synergy for Improved Quality and Efficiency in RAG Systems
+Thu-am,Thu-am_7,561,FsPONER: Few-shot Prompt Optimization for Named Entity Recognition in Domain-specific Scenarios
+Thu-am,Thu-am_9,2074,Fairness in Repeated House Allocation
+Thu-am,Thu-am_9,969,Incentive and Fairness of Ordered Weighted Average for Facility Location Games
+Thu-am,Thu-am_9,2629,A Gale-Shapley View of Unique Stable Marriages
+Thu-am,Thu-am_9,1601,Distribution of Chores with Information Asymmetry
+Thu-am,Thu-am_9,1594,Explaining the Lack of Locally Envy-Free Allocations
+Thu-am,Thu-am_9,815,Online Friends Partitioning under Uncertainty
+Thu-am,Thu-am_9,783,Complexity and Approximation Schemes for Social Welfare Maximization in the High-Multiplicity Setting
+Thu-am,Thu-am_9,1510,Mechanism Design for Extending the Accessibility of Facilities
